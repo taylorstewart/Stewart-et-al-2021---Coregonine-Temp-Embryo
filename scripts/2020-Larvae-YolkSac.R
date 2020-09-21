@@ -1,12 +1,9 @@
-## ===========================================================
-## Clear the environment first
-## ===========================================================
+# Clear the environment first ---------------------------------------------
+
 rm(list = ls(all.names = TRUE))
 
+# Load packages -----------------------------------------------------------
 
-## ===========================================================
-## Load packages
-## ===========================================================
 library(tidyverse)
 library(readxl)
 library(lubridate)
@@ -20,23 +17,22 @@ library(emmeans)
 
 options(na.action = "na.fail")
 
+# Load and Initial Manipulations of the Larval Hatch Yolk Data ------------
 
-## ===========================================================
-## Load and Initial Manipulations of the Larval Hatch Length Data
-## ===========================================================
-larvae.yolk.lo.2 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-2")
-larvae.yolk.ls.2 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-2")
-larvae.yolk.lk.2 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-2")
-larvae.yolk.lo.4.5 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-4.5")
-larvae.yolk.ls.4.5 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-4.5")
-larvae.yolk.lk.4.5 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-4.5")
-larvae.yolk.lo.7.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-7")
-larvae.yolk.ls.7.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-7")
-larvae.yolk.lk.7.0 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-7")
-larvae.yolk.lo.9.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-9")
-larvae.yolk.ls.9.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-9")
-larvae.yolk.lk.9.0 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-9")
+larvae.yolk.lo.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-2")
+larvae.yolk.ls.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-2")
+larvae.yolk.lk.2 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-2")
+larvae.yolk.lo.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-4.5")
+larvae.yolk.ls.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-4.5")
+larvae.yolk.lk.4.5 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-4.5")
+larvae.yolk.lo.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-7")
+larvae.yolk.ls.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-7")
+larvae.yolk.lk.7.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-7")
+larvae.yolk.lo.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-9")
+larvae.yolk.ls.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-9")
+larvae.yolk.lk.9.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-9")
 
+## Combine each population, temperature, and species
 larvae.yolk <- bind_rows(larvae.yolk.lo.2, larvae.yolk.ls.2, larvae.yolk.lk.2,
                          larvae.yolk.lo.4.5, larvae.yolk.ls.4.5, larvae.yolk.lk.4.5,
                          larvae.yolk.lo.7.0, larvae.yolk.ls.7.0, larvae.yolk.lk.7.0,
@@ -45,12 +41,12 @@ larvae.yolk <- bind_rows(larvae.yolk.lo.2, larvae.yolk.ls.2, larvae.yolk.lk.2,
   mutate(population = factor(population, ordered = TRUE, levels = c("konnevesi", "superior", "ontario")),
          temperature = factor(temperature),
          species = factor(species),
+         # Create a variable with population and species combined
          group = factor(interaction(population, species), ordered = TRUE,
                         levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi")))
 
-## -----------------------------------------------------------
-## Calculate means and std. error for each treatment
-## -----------------------------------------------------------
+# Calculate summary statistics --------------------------------------------
+
 larvae.yolk.summary <- larvae.yolk %>% group_by(population, temperature, species, group) %>% 
   summarize(mean.yolk = mean(y_vol_mm3),
             sd.yolk = sd(y_vol_mm3),
@@ -58,6 +54,7 @@ larvae.yolk.summary <- larvae.yolk %>% group_by(population, temperature, species
             se.yolk = sd.yolk/sqrt(n)) %>% 
   arrange(population, temperature)
 
+# Visualizations ----------------------------------------------------------
 
 ggplot(filter(larvae.yolk.summary, species %in% c("albula", "artedi")), aes(x = temperature, y = mean.yolk, group = population, color = population, shape = population)) + 
   geom_point(size = 3.5, position = position_dodge(0.09)) + 
@@ -82,6 +79,7 @@ ggplot(filter(larvae.yolk.summary, species %in% c("albula", "artedi")), aes(x = 
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
+## Save figure
 ggsave("figures/larvae/2020-Yolk.png", width = 6.5, height = 7, dpi = 300)
 
 
@@ -110,17 +108,17 @@ ggplot(larvae.yolk.summary, aes(x = temperature, y = mean.yolk, group = group, c
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
+## Save figure
 ggsave("figures/larvae/2020-Yolk-wWhitefish.png", width = 6.5, height = 7, dpi = 300)
 
 
-##############################################################
-## ANALYSIS
-##############################################################
-## -----------------------------------------------------------
+# Statistical Analyses ----------------------------------------------------
+
 ## Fit model
-## -----------------------------------------------------------
-glm <- lmer(length_mm ~ temperature + group + temperature * group + (1|male) + (1|female), 
-            data = larvae.yolk, REML = FALSE)
+glm <- lmer(length_mm ~ temperature + group + temperature * group +       # Fixed
+            (1|male) + (1|female),                                        # Random
+            data = larvae.yolk, 
+            REML = FALSE)
 
 dg1 <- dredge(glm)                    # to select all model based on AICc
 dg1
@@ -133,5 +131,5 @@ Anova(best, type = "III")
 
 # Post-hoc test:
 best.emm <- emmeans(best, ~ temperature * group)
-(best.emm.pair <- pairs(best.emm, simple = list("temperature", "group"), adjust = "bonferroni"))
+pairs(best.emm, simple = list("group", "temperature"), adjust = "fdr") 
 

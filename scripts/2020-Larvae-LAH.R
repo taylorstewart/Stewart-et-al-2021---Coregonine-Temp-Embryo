@@ -1,12 +1,9 @@
-## ===========================================================
-## Clear the environment first
-## ===========================================================
+# Clear the environment first ---------------------------------------------
+
 rm(list = ls(all.names = TRUE))
 
+# Load packages -----------------------------------------------------------
 
-## ===========================================================
-## Load packages
-## ===========================================================
 library(tidyverse)
 library(readxl)
 library(lubridate)
@@ -20,23 +17,22 @@ library(emmeans)
 
 options(na.action = "na.fail")
 
+# Load and Initial Manipulations of the Larval Hatch Length Data ----------
 
-## ===========================================================
-## Load and Initial Manipulations of the Larval Hatch Length Data
-## ===========================================================
-larvae.tl.lo.2 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-2")
-larvae.tl.ls.2 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-2")
-larvae.tl.lk.2 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-2")
-larvae.tl.lo.4.5 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-4.5")
-larvae.tl.ls.4.5 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-4.5")
-larvae.tl.lk.4.5 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-4.5")
-larvae.tl.lo.7.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-7")
-larvae.tl.ls.7.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-7")
-larvae.tl.lk.7.0 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-7")
-larvae.tl.lo.9.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LO-9")
-larvae.tl.ls.9.0 <- read_excel("data/Artedi-Temperature-Experiments-LarvaeMeasurements-2020.xlsx", sheet = "LS-9")
-larvae.tl.lk.9.0 <- read_excel("data/Finland2019-Measurements.xlsx", sheet = "LK-9")
+larvae.tl.lo.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-2")
+larvae.tl.ls.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-2")
+larvae.tl.lk.2 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-2")
+larvae.tl.lo.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-4.5")
+larvae.tl.ls.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-4.5")
+larvae.tl.lk.4.5 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-4.5")
+larvae.tl.lo.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-7")
+larvae.tl.ls.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-7")
+larvae.tl.lk.7.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-7")
+larvae.tl.lo.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-9")
+larvae.tl.ls.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-9")
+larvae.tl.lk.9.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-9")
 
+## Combine each population, temperature, and species
 larvae.tl <- bind_rows(larvae.tl.lo.2, larvae.tl.ls.2, larvae.tl.lk.2,
                        larvae.tl.lo.4.5, larvae.tl.ls.4.5, larvae.tl.lk.4.5,
                        larvae.tl.lo.7.0, larvae.tl.ls.7.0, larvae.tl.lk.7.0,
@@ -44,20 +40,21 @@ larvae.tl <- bind_rows(larvae.tl.lo.2, larvae.tl.ls.2, larvae.tl.lk.2,
   filter(!is.na(length_mm)) %>% 
   mutate(population = factor(population, ordered = TRUE, levels = c("konnevesi", "superior", "ontario")),
          temperature = factor(temperature),
-         species = factor(species))
+         species = factor(species),
+         # Create a variable with population and species combined
+         group = factor(interaction(population, species), ordered = TRUE,
+                        levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi")))
 
-## -----------------------------------------------------------
-## Calculate means and std. error for each treatment
-## -----------------------------------------------------------
-larvae.tl.summary <- larvae.tl %>% group_by(population, temperature, species) %>% 
+# Calculate summary statistics --------------------------------------------
+
+larvae.tl.summary <- larvae.tl %>% group_by(population, temperature, species, group) %>% 
   summarize(mean.tl = mean(length_mm),
             sd.tl = sd(length_mm),
             n = n(),
             se.tl = sd.tl/sqrt(n)) %>% 
-  arrange(population, temperature) %>% 
-  mutate(group = factor(interaction(population, species)))
+  arrange(population, temperature)
 
-
+# Visualizations ----------------------------------------------------------
 
 ggplot(filter(larvae.tl.summary, species %in% c("albula", "artedi")), aes(x = temperature, y = mean.tl, group = population, color = population, shape = population)) + 
   geom_point(size = 3) + 
@@ -111,28 +108,23 @@ ggplot(larvae.tl.summary, aes(x = temperature, y = mean.tl, group = group, color
 
 ggsave("figures/larvae/2020-LAH-wWhitefish.png", width = 6.5, height = 7, dpi = 300)
 
+# Statistical Analyses ----------------------------------------------------
 
-##############################################################
-## ANALYSIS
-##############################################################
-## -----------------------------------------------------------
 ## Fit model
-## -----------------------------------------------------------
-glm <- lmer(length_mm ~ population + temperature + population * temperature + (1|male) + (1|female), 
-            data = larvae.tl, REML = FALSE)
+glm <- lmer(length_mm ~ temperature  + group + temperature * group +       # Fixed
+            (1|male) + (1|female),                                         # Random
+            data = larvae.tl, 
+            REML = FALSE)
 
 dg1 <- dredge(glm)                    # to select all model based on AICc
 dg1
 
-best <- get.models(dg1,"8")[[1]]    # select best model based on AICc
+best <- get.models(dg1, 1)[[1]]      # select best model based on AICc
 summary(best)
 
 Anova(best)
 Anova(best, type = "III")
 
 # Post-hoc test:
-best.emm <- emmeans(best, ~ temperature * population)
-(best.emm.pair <- pairs(best.emm, simple = list("population", c("temperature")), adjust = "fdr"))
-best.emm.pair.cld <- multcomp::cld(best.emm) %>% 
-  select(population, temperature, group = .group)
-
+best.emm <- emmeans(best, ~ temperature * group)
+pairs(best.emm, simple = list("group", "temperature"), adjust = "fdr") 

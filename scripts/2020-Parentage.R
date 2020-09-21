@@ -1,28 +1,20 @@
-## ===========================================================
-## Clear the environment first
-## ===========================================================
+# Clear the environment first ---------------------------------------------
 rm(list = ls(all.names = TRUE))
 
-
-## ===========================================================
-## Load packages
-## ===========================================================
+# Load packages -----------------------------------------------------------
 library(dplyr)
 library(readxl)
 library(magrittr)
 library(ggplot2)
 
-
-## ===========================================================
-## Load parentage data
-## ===========================================================
+# Load parentage data -----------------------------------------------------
 parentage.NA <- read_excel("data/Artedi-Temperature-Experiments-2020.xlsx", sheet = "2020_Parentage")
 parentage.FI <- read_excel("data/Finland2019.xlsx", sheet = "2019_Parentage")
 
 parentage <- bind_rows(parentage.NA, parentage.FI) %>% 
   mutate(group = interaction(population, species))
 
-
+# Visualization -----------------------------------------------------------
 ggplot(parentage, aes(x = total.length.mm, y = weight.g, group = group, color = group)) +
   geom_point(size = 2, show.legend = FALSE) +
   geom_smooth(method = "lm", se = FALSE) +
