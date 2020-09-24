@@ -39,11 +39,17 @@ larvae.tl <- bind_rows(larvae.tl.lo.2, larvae.tl.ls.2, larvae.tl.lk.2,
                        larvae.tl.lo.9.0, larvae.tl.ls.9.0, larvae.tl.lk.9.0) %>% 
   filter(!is.na(length_mm)) %>% 
   mutate(population = factor(population, ordered = TRUE, levels = c("konnevesi", "superior", "ontario")),
-         temperature = factor(temperature),
-         species = factor(species),
+         temperature = factor(temperature, ordered = TRUE, 
+                              levels = c(2, 4.5, 7, 9),
+                              labels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+         female = factor(female, levels = seq(1, 12, 1),
+                         labels = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12")),
+         male = factor(male, levels = seq(1, 16, 1),
+                       labels = c("M\n1", "M\n2", "M\n3", "M\n4", "M\n5", "M\n6", "M\n7", "M\n8", "M\n9", "M\n10", "M\n11", "M\n12", "M\n13", "M\n14", "M\n15", "M\n16")),
          # Create a variable with population and species combined
          group = factor(interaction(population, species), ordered = TRUE,
-                        levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi")))
+                        levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi"),
+                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
 
 # Calculate summary statistics --------------------------------------------
 

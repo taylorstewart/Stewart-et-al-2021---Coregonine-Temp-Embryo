@@ -100,7 +100,7 @@ ggplot(data.hatched, aes(x = temperature, y = weight.mean.DO, group = population
                 width = 0.3, position = position_dodge(0.9), size = 0.7) +
   scale_y_continuous(limits = c(0, 12.4), breaks = seq(8.2, 12.4, 0.6), expand = c(0, 0)) +
   scale_fill_manual(labels = c("Ontario    ", "Superior"), 
-                    values = c("#a6cee3", "#1f78b4")) +
+                    values = c("#525252", "#cccccc")) +
   coord_cartesian(ylim = c(8.0, 12.4)) +
   labs(x = "Incubation Temperature (°C)", y = "Dissolved Oxygen (mg/L ± SE)") +
   theme_classic() +
