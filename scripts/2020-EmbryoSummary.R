@@ -15,6 +15,8 @@ library(ade4)
 library(emmeans)
 
 options(na.action = "na.fail")
+emm_options(pbkrtest.limit = 14000)
+
 
 # Load incubation temperature data ----------------------------------------
 
@@ -22,6 +24,7 @@ ADD.2020 <- read.csv("data/2020-Artedi-ADD.csv", header = TRUE) %>%
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
+
 
 # Load hatching data ------------------------------------------------------
 
@@ -88,66 +91,6 @@ hatch.ADD.summary <- hatch %>% filter(!is.na(ADD), hatch == 1, premature != 1) %
             se.ADD = sd.ADD / sqrt(n()))
 
 
-# Summarize Data - Family Level -------------------------------------------
-
-## Embryo Survival
-hatch.survival.family.summary <- hatch %>% filter(eye != 0) %>% 
-  group_by(population, species, temperature, group, male, female, block) %>% 
-  summarize(mean.survival = (mean(hatch)*100),
-            sd.survival = (sd(hatch)*100),
-            se.survival = sd.survival / sqrt(n()))
-
-## Days Post Fertilization
-hatch.dpf.family.summary <- hatch %>% filter(hatch == 1, premature != 1, !is.na(dpf)) %>% 
-  group_by(population, species, temperature, group, male, female, block) %>% 
-  summarize(mean.dpf = mean(dpf),
-            sd.dpf = sd(dpf),
-            se.dpf = sd.dpf / sqrt(n()))
-
-## Accumulated Degree-Days
-hatch.ADD.family.summary <- hatch %>% filter(!is.na(ADD), hatch == 1, premature != 1) %>% 
-  group_by(population, species, temperature, group, male, female, block) %>% 
-  summarize(mean.ADD = mean(ADD),
-            sd.ADD = sd(ADD),
-            se.ADD = sd.ADD / sqrt(n()))
-
-
-# Find Highest and Lowest SE for Each Male --------------------------------
-
-## Embryo Survival
-hatch.survival.family.summary <- do.call(rbind, lapply(unique(hatch.survival.family.summary$male), function(i) {
-  male <- hatch.survival.family.summary %>% filter(male == i)
-  
-  male.se <- male %>% group_by(population, species, temperature, group, block) %>% 
-    mutate(se.high = ifelse(mean.survival == max(mean.survival), se.survival, NA),
-           se.low = ifelse(mean.survival == min(mean.survival), se.survival, NA),
-           se.high = ifelse(!is.na(se.low) & is.na(se.high), 0, se.high),
-           se.low = ifelse(!is.na(se.high) & is.na(se.low), 0, se.low))
-}))
-
-## Days Post Fertilization
-hatch.dpf.family.summary <- do.call(rbind, lapply(unique(hatch.dpf.family.summary$male), function(i) {
-  male <- hatch.dpf.family.summary %>% filter(male == i)
-  
-  male.se <- male %>% group_by(population, species, temperature, group, block) %>% 
-    mutate(se.high = ifelse(mean.dpf == max(mean.dpf), se.dpf, NA),
-           se.low = ifelse(mean.dpf == min(mean.dpf), se.dpf, NA),
-           se.high = ifelse(!is.na(se.low) & is.na(se.high), 0, se.high),
-           se.low = ifelse(!is.na(se.high) & is.na(se.low), 0, se.low))
-}))
-
-## Accumulated Degree-Days
-hatch.ADD.family.summary <- do.call(rbind, lapply(unique(hatch.ADD.family.summary$male), function(i) {
-  male <- hatch.ADD.family.summary %>% filter(male == i)
-  
-  male.se <- male %>% group_by(population, species, temperature, group, block) %>% 
-    mutate(se.high = ifelse(mean.ADD == max(mean.ADD), se.ADD, NA),
-           se.low = ifelse(mean.ADD == min(mean.ADD), se.ADD, NA),
-           se.high = ifelse(!is.na(se.low) & is.na(se.high), 0, se.high),
-           se.low = ifelse(!is.na(se.high) & is.na(se.low), 0, se.low))
-}))
-
-
 # Statistical Analysis - Survival - GLM -----------------------------------
 
 # filter to only eyed embryos
@@ -171,102 +114,12 @@ Anova(hatch.survival.glm.AIC.best)
 Anova(hatch.survival.glm.AIC.best, type = "III")
 
 # post-hoc test
-hatch.survival.glm.emm <- emmeans(hatch.survival.glm.AIC.best, ~ temperature * group)
-(hatch.survival.glm.emm.pair <- pairs(hatch.survival.glm.emm, simple = "each", adjust = "fdr"))
+hatch.survival.glm.AIC.best <- emmeans(hatch.survival.glm.AIC.best, ~ temperature * group)
 
-
-# Statistical Analysis - Survival - Heritability --------------------------
-
-## Run nested loop to run narrow-sense heritability calculations for each temperature and population
-heritability.survival <- do.call(rbind, lapply(unique(hatch.survival$temperature), function(i) {
-  ## Filter to only a single temperature treatment
-  data.temp <- hatch.survival %>% filter(temperature == i)
-  
-  ## Apply a nested loop to run each group (lake:species) within each temperature treatment
-  temp <- do.call(rbind, lapply(unique(data.temp$group), function(j) {
-    ## Filter to a single group
-    data.temp.group <- filter(data.temp, group == j)
-    
-    ## Fit random-effect model
-    herit.surv.model <- lmer(hatch ~ 1 + (1|male) + (1|female) + (1|male:female) + (1|block) + (1|plate),
-                             data = data.temp.group, REML = F)
-    
-    ## Calculate genetic variance 
-    var.sire <- VarCorr(herit.surv.model)$male[1]
-    
-    ## Calculate environmental sources of variance
-    var.resid <- (VarCorr(herit.surv.model)$male[1])+
-      (VarCorr(herit.surv.model)$female[1])+
-      (VarCorr(herit.surv.model)$"male:female"[1])+
-      (VarCorr(herit.surv.model)$plate [1])+
-      (VarCorr(herit.surv.model)$block[1])
-    
-    ## Calculate heritability
-    heritability <- 4 * var.sire / (var.sire + var.resid)
-    
-    herit.surv.df <- data.frame(group = j, temperature = i, var.sire = round(var.sire, 2), var.resid = round(var.resid, 2), herit = round(heritability, 2))
-  }))
-}))
-
-
-# Statistical Analysis - Incubation Period (ADD) - GLM --------------------
-
-# filter to only hatched embryos
-hatch.ADD <- hatch %>% filter(!is.na(ADD))
-
-# create linear mixed model
-hatch.ADD.glm <- lmer(ADD ~ temperature + group + temperature * group +       # Fixed
-                      (1|male) + (1|female),                                  # Random
-                      data = hatch.ADD, 
-                      REML = FALSE)
-
-# to select all model based on AICc
-hatch.ADD.glm.AIC <- dredge(hatch.ADD.glm)
-
-# select best model based on AICc
-hatch.ADD.glm.AIC.best <- get.models(hatch.ADD.glm.AIC, 1)[[1]]
-
-# ANOVA
-Anova(hatch.ADD.glm.AIC.best)
-Anova(hatch.ADD.glm.AIC.best, type = "III")
-
-# post-hoc test
-hatch.ADD.glm.emm <- emmeans(hatch.ADD.glm.AIC.best, ~ temperature * group)
-pairs(hatch.ADD.glm.emm, simple = list("group", c("temperature")), adjust = "fdr") 
-
-
-# Statistical Analysis - Incubation Period (ADD) - Heritability -----------
-
-## Run nested loop to run narrow-sense heritability calculations for each temperature and population
-heritability.ADD <- do.call(rbind, lapply(unique(hatch.ADD$temperature), function(i) {
-  ## Filter to only a single temperature treatment
-  data.temp <- hatch.ADD %>% filter(temperature == i)
-  
-  ## Apply a nested loop to run each group (lake:species) within each temperature treatment
-  temp <- do.call(rbind, lapply(unique(data.temp$group), function(j) {
-    ## Filter to a single group
-    data.temp.group <- filter(data.temp, group == j)
-    
-    ## Fit random-effect model
-    herit.ADD.model <- lmer(ADD ~ 1 + (1|male) + (1|female) + (1|male:female) + (1|block) + (1|plate),
-                            data = data.temp.group, REML = F)
-    
-    ## Calculate genetic variance 
-    var.sire <- VarCorr(herit.ADD.model)$male[1]
-    
-    ## Calculate environmental sources of variance
-    var.resid <- (VarCorr(herit.ADD.model)$male[1])+
-      (VarCorr(herit.ADD.model)$female[1])+
-      (VarCorr(herit.ADD.model)$"male:female"[1])+
-      (VarCorr(herit.ADD.model)$plate [1])+
-      (VarCorr(herit.ADD.model)$block[1])
-    
-    ## Calculate heritability
-    heritability <- 4 * var.sire / (var.sire + var.resid)
-    
-    herit.ADD.df <- data.frame(group = j, temperature = i, var.sire = round(var.sire, 2), var.resid = round(var.resid, 2), herit = round(heritability, 2))
-  }))
-}))
+## Pairwise, cld, confidence intervals
+pairs(hatch.survival.glm.AIC.best, simple = list("group", c("temperature")), adjust = "bonferroni", type = "response") 
+hatch.survival.glm.emm.confint <- multcomp::cld(hatch.survival.glm.AIC.best, type = "response", sort = F, adjust = "tukey") %>% 
+  mutate(.group = gsub("[[:space:]]", "", .group))
 
 
 # Statistical Analysis - Incubation Period (DPF) - GLM --------------------
@@ -278,7 +131,7 @@ hatch.dpf <- hatch %>% filter(!is.na(dpf))
 hatch.dpf.glm <- lmer(dpf ~ temperature + group + temperature * group +       # Fixed
                       (1|male) + (1|female),                                  # Random
                       data = hatch.dpf, 
-                      REML = FALSE)
+                      REML = TRUE)
 
 # to select all model based on AICc
 hatch.dpf.glm.AIC <- dredge(hatch.dpf.glm)
@@ -292,138 +145,89 @@ Anova(hatch.dpf.glm.AIC.best, type = "III")
 
 # post-hoc test
 hatch.dpf.glm.emm <- emmeans(hatch.dpf.glm.AIC.best, ~ temperature * group)
-pairs(hatch.dpf.glm.emm, simple = list("group", c("temperature")), adjust = "fdr") 
+
+## Pairwise, cld, confidence intervals
+pairs(hatch.dpf.glm.emm, simple = list("group", c("temperature")), adjust = "bonferroni", type = "response") 
+hatch.dpf.glm.emm.confint <- multcomp::cld(hatch.dpf.glm.emm, type = "response", sort = F, adjust = "tukey") %>% 
+  mutate(.group = gsub("[[:space:]]", "", .group))
 
 
-# Statistical Analysis - Incubation Period (DPF) - Heritability -----------
+# Statistical Analysis - Incubation Period (ADD) - GLM --------------------
 
-## Run nested loop to run narrow-sense heritability calculations for each temperature and population
-heritability.dpf <- do.call(rbind, lapply(unique(hatch.dpf$temperature), function(i) {
-  ## Filter to only a single temperature treatment
-  data.temp <- hatch.dpf %>% filter(temperature == i)
-  
-  ## Apply a nested loop to run each group (lake:species) within each temperature treatment
-  temp <- do.call(rbind, lapply(unique(data.temp$group), function(j) {
-    ## Filter to a single group
-    data.temp.group <- filter(data.temp, group == j)
-    
-    ## Fit random-effect model
-    herit.dpf.model <- lmer(dpf ~ 1 + (1|male) + (1|female) + (1|male:female) + (1|block) + (1|plate),
-                            data = data.temp.group, REML = F)
-    
-    ## Calculate genetic variance 
-    var.sire <- VarCorr(herit.dpf.model)$male[1]
-    
-    ## Calculate environmental sources of variance
-    var.resid <- (VarCorr(herit.dpf.model)$male[1])+
-      (VarCorr(herit.dpf.model)$female[1])+
-      (VarCorr(herit.dpf.model)$"male:female"[1])+
-      (VarCorr(herit.dpf.model)$plate [1])+
-      (VarCorr(herit.dpf.model)$block[1])
-    
-    ## Calculate heritability
-    heritability <- 4 * var.sire / (var.sire + var.resid)
-    
-    herit.dpf.df <- data.frame(group = j, temperature = i, var.sire = round(var.sire, 2), var.resid = round(var.resid, 2), herit = round(heritability, 2))
-  }))
-}))
+# filter to only hatched embryos
+hatch.ADD <- hatch %>% filter(!is.na(ADD))
+
+# create linear mixed model
+hatch.ADD.glm <- lmer(ADD ~ temperature + group + temperature * group +       # Fixed
+                        (1|male) + (1|female),                                  # Random
+                      data = hatch.ADD, 
+                      REML = TRUE)
+
+# to select all model based on AICc
+hatch.ADD.glm.AIC <- dredge(hatch.ADD.glm)
+
+# select best model based on AICc
+hatch.ADD.glm.AIC.best <- get.models(hatch.ADD.glm.AIC, 1)[[1]]
+
+# ANOVA
+Anova(hatch.ADD.glm.AIC.best)
+Anova(hatch.ADD.glm.AIC.best, type = "III")
+
+# post-hoc test
+hatch.ADD.glm.emm <- emmeans(hatch.ADD.glm.AIC.best, ~ temperature * group)
+
+## Pairwise, cld, confidence intervals
+pairs(hatch.ADD.glm.emm, simple = list("group", c("temperature")), adjust = "bonferroni", type = "response") 
+hatch.ADD.glm.emm.confint <- multcomp::cld(hatch.ADD.glm.emm, type = "response", sort = F, adjust = "tukey") %>% 
+  mutate(.group = gsub("[[:space:]]", "", .group))
 
 
-# Visualizations - Family Level -------------------------------------------
+# Visualizations - Survival Heritability ----------------------------------
 
-## Embryo Survival
-ggplot(hatch.survival.family, aes(x = male, y = mean.survival, group = female, shape = female)) + 
-  geom_point(size = 4.0) +
-  geom_errorbar(aes(ymin = mean.survival-se.low, ymax = mean.survival+se.high), 
-                size = 0.8, width = 0.3) +
-  geom_vline(xintercept = c(4.5, 8.5, 12.5), linetype = "dashed") +
-  scale_x_discrete(expand = c(0, 0.3)) +
-  scale_y_continuous(limits = c(-5, 110), breaks = seq(0, 100, 20), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
-  scale_shape_manual("combine", values = c(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0)) +
-  labs(y = "Embryo Survival (% ± SE)") +
-  theme_bw() +
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
+heritability.all <- bind_rows(heritability.survival, heritability.ADD, heritability.dpf) %>% 
+  mutate(trait = factor(trait, ordered = TRUE, levels = c("surv", "dpf", "add"),
+                        labels = c("Embryo Survival", "Incubation Period (DPF)", "Incubation Period (ADD)")),
+         label = ifelse(herit == 0, 0, NA))
+
+ggplot(heritability.all, aes(x = temperature, y = (herit * 100), group = group, fill = group)) + 
+  stat_summary(fun = mean, geom = "bar", position = position_dodge(width = 0.9), size = 0.5, color = "black") +
+  #geom_text(aes(x = temperature, y = 0.75, label = label), position = position_dodge(width = 0.9)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_y_continuous(limits = c(-0.5, 75), breaks = seq(0, 75, 25), expand = c(0, 0)) +
+  scale_x_discrete(expand = c(0, 0.5)) +
+  labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
+  theme_bw() + 
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 18),
+        axis.ticks.length = unit(1.5, "mm"),
         legend.title = element_blank(),
-        legend.text = element_text(size = 15),
+        legend.text = element_text(size = 20),
         legend.key.size = unit(1.0, 'cm'),
         legend.position = "top",
-        panel.spacing = unit(5, "mm"),
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) +
-  facet_grid(group ~ temperature)
+        strip.text = element_text(size = 15),
+        plot.margin = unit(c(5, 5, 5, 5), 'mm')) + 
+  facet_wrap(~trait, nrow = 1)
 
-ggsave("figures/embryo/2020-Survival-Family.png", width = 20, height = 12, dpi = 300)
-
-## Days Post Fertilization
-ggplot(hatch.dpf.family, aes(x = male, y = mean.dpf, group = female, shape = female)) + 
-  geom_point(size = 4.0) +
-  geom_errorbar(aes(ymin = mean.dpf-se.low, ymax = mean.dpf+se.high), 
-                size = 0.8, width = 0.3) +
-  geom_vline(xintercept = c(4.5, 8.5, 12.5), linetype = "dashed") +
-  scale_x_discrete(expand = c(0, 0.35)) +
-  scale_y_continuous(limits = c(25, 230), breaks = seq(25, 225, 50), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
-  scale_shape_manual("combine", values = c(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0)) +
-  labs(y = "Incubation Period (No. Days ± SE)") +
-  theme_bw() +
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 15),
-        legend.key.size = unit(1.0, 'cm'),
-        legend.position = "top",
-        panel.spacing = unit(5, "mm"),
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) +
-  facet_grid(group ~ temperature)
-
-ggsave("figures/embryo/2020-DPF-Family.png", width = 20, height = 12, dpi = 300)
-
-## Accumulated Degree-Days
-ggplot(hatch.ADD.family, aes(x = male, y = mean.ADD, group = female, shape = female)) + 
-  geom_point(size = 4.0) +
-  geom_errorbar(aes(ymin = mean.ADD-se.low, ymax = mean.ADD+se.high),
-                size = 0.8, width = 0.3) +
-  geom_vline(xintercept = c(4.5, 8.5, 12.5), linetype = "dashed") +
-  scale_x_discrete(expand = c(0, 0.35)) +
-  scale_y_continuous(limits = c(150, 940), breaks = seq(200, 900, 100), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
-  scale_shape_manual("combine", values = c(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0)) +
-  labs(y = "Incubation Period (ADD °C ± SE)") +
-  theme_bw() +
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 15),
-        legend.key.size = unit(1.0, 'cm'),
-        legend.position = "top",
-        panel.spacing = unit(5, "mm"),
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) +
-  facet_grid(group ~ temperature)
-
-ggsave("figures/embryo/2020-ADD-Family.png", width = 20, height = 12, dpi = 300)
+ggsave("figures/embryo/2020-Heritability.png", width = 20, height = 12, dpi = 300)
 
 
 # Visualizations - Population Level ---------------------------------------
 
 ## Embryo Survival
-ggplot(hatch.survival.summary, aes(x = temperature, y = mean.survival, group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.15)) +
-  geom_point(size = 3.25, position = position_dodge(0.15)) +
-  geom_errorbar(aes(ymin = mean.survival-se.survival, ymax = mean.survival+se.survival), 
-                position = position_dodge(0.15),
+ggplot(hatch.survival.glm.emm.confint, aes(x = temperature, y = (prob * 100), group = group, color = group, shape = group, linetype = group)) + 
+  geom_line(size = 1.0, position = position_dodge(0.22)) +
+  geom_point(size = 3.25, position = position_dodge(0.22)) +
+  geom_errorbar(aes(ymin = (asymp.LCL * 100), ymax = (asymp.UCL* 100)), 
+                position = position_dodge(0.22),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  geom_text(aes(label = .group, y = (asymp.UCL * 100) + 2), size = 3, 
+            position = position_dodge(0.22), 
+            show.legend = FALSE) +
   scale_x_discrete(expand = c(0, 0.15)) +
-  scale_y_continuous(limits = c(10, 101), breaks = seq(0, 100, 25), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(10, 103), breaks = seq(0, 100, 25), expand = c(0, 0)) +
   #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
   #                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -432,7 +236,7 @@ ggplot(hatch.survival.summary, aes(x = temperature, y = mean.survival, group = g
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Embryo Survival (% ± SE)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Embryo Survival (% ± 95% CI)", color = "Populations") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
@@ -447,17 +251,20 @@ ggplot(hatch.survival.summary, aes(x = temperature, y = mean.survival, group = g
         #legend.position = c(0.8, 0.86),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-Survival-BW.png", width = 8.5, height = 6, dpi = 300)
+ggsave("figures/embryo/2020-Survival-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
 ## Days Post Fertilization
-ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, color = group, shape = group, linetype = group)) + 
+ggplot(hatch.dpf.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
   geom_line(size = 1.0, position = position_dodge(0.15)) +
   geom_point(size = 3.25, position = position_dodge(0.15)) +
-  geom_errorbar(aes(ymin = mean.dpf-se.dpf, ymax = mean.dpf+se.dpf), 
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
                 position = position_dodge(0.15),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  geom_text(aes(label = .group, y = upper.CL+3.5), size = 3, 
+            position = position_dodge(0.15), 
+            show.legend = FALSE, color = "black") +
   scale_x_discrete(expand = c(0, 0.15)) +
-  scale_y_continuous(limits = c(45, 225), breaks = seq(50, 225, 25), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(40, 230), breaks = seq(50, 225, 25), expand = c(0, 0)) +
   #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
   #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -466,7 +273,7 @@ ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, colo
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (No. Days ± SE)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (No. Days ± 95% CI)", color = "Populations") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
@@ -481,17 +288,20 @@ ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, colo
         #legend.position = c(0.8, 0.86),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-DPF-BW.png", width = 8.5, height = 6, dpi = 300)
+ggsave("figures/embryo/2020-DPF-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
 ## Accumulated Degree-Days
-ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, color = group, shape = group, linetype = group)) + 
+ggplot(hatch.ADD.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
   geom_line(size = 1.0, position = position_dodge(0.15)) +
   geom_point(size = 3.25, position = position_dodge(0.15)) +
-  geom_errorbar(aes(ymin = mean.ADD-sd.ADD, ymax = mean.ADD+sd.ADD), 
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
                 position = position_dodge(0.15),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  geom_text(aes(label = .group, y = upper.CL+14), size = 3, 
+            position = position_dodge(0.15), 
+            show.legend = FALSE) +
   scale_x_discrete(expand = c(0, 0.15)) +
-  scale_y_continuous(limits = c(250, 950), breaks = seq(250, 950, 100), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(250, 850), breaks = seq(250, 850, 100), expand = c(0, 0)) +
   #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
   #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -500,7 +310,7 @@ ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, colo
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (ADD °C ± SE)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (ADD °C ± 95% CI)", color = "Populations") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
@@ -515,6 +325,6 @@ ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, colo
         #legend.position = c(0.17, 0.88),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-ADD-BW.png", width = 8.5, height = 6, dpi = 300)
+ggsave("figures/embryo/2020-ADD-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
 
