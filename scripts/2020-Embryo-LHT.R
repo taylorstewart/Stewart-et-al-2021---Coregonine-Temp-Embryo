@@ -32,18 +32,18 @@ hatch.USA <- read_excel("data/2020-Artedi-Temperature-Experiment.xlsx", sheet = 
          hatch = as.numeric(hatch)) %>% 
   filter(!is.na(eye), !is.na(hatch)) %>% 
   left_join(ADD) %>% 
-  dplyr::select(population, species, male, female, block, temperature, eye, hatch, dpf, ADD)
+  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD)
 
 hatch.Finland <- read_excel("data/2019-Finland-Temperature-Experiment.xlsx", sheet = "L. Konnevesi") %>% 
   mutate(premature = 0) %>% 
-  dplyr::select(population, species, male, female, block, temperature, eye, hatch, dpf, ADD)
+  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD)
 
 ## Combine all populations and years
 hatch <- bind_rows(hatch.USA, hatch.Finland) %>% 
   mutate(population = factor(population, levels = c("konnevesi", "superior", "ontario"), ordered = TRUE),
          temperature = factor(temperature, ordered = TRUE, 
-                              levels = c(2, 4.5, 7, 9),
-                              labels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+                              levels = c(2, 4.5, 7, 9)),
+                              #labels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
          female = factor(female, levels = seq(1, 12, 1),
                          labels = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12")),
          male = factor(male, levels = seq(1, 16, 1),
@@ -59,10 +59,19 @@ hatch <- bind_rows(hatch.USA, hatch.Finland) %>%
 rm(hatch.USA, hatch.Finland, ADD)
 
 
-#### STATISTICAL ANALYSIS - SURVIVAL - GLM -----------------------------------
+#### FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------
 
-# filter to only eyed embryos
+## filter to only eyed embryos
 hatch.survival <- hatch %>% filter(eye != 0)
+
+## filter to only hatched embryos
+hatch.dpf <- hatch %>% filter(!is.na(dpf), hatch == 1)
+
+## filter to only hatched embryos
+hatch.add <- hatch %>% filter(!is.na(ADD), hatch == 1)
+
+
+#### STATISTICAL ANALYSIS - SURVIVAL - GLM -----------------------------------
 
 ## Find best fit model - be patient!
 hatch.survival.model <- buildmer(hatch ~ temperature + group + temperature:group + (1|family) + (1|male) + (1|female) + (1|block), 
@@ -118,10 +127,6 @@ write.csv(hatch.survival.glm.emm.confint, "data/emmeans/hatch_survival_glm_emm.c
 
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - GLM --------------------
-
-## filter to only hatched embryos
-hatch.dpf <- hatch %>% filter(!is.na(dpf), hatch == 1)
-#, group %in% c("LK-Whitefish", "LS-Cisco"), temperature %in% c("9.0°C", "7.0°C"))
 
 ## Find best fit model - be patient!
 hatch.dpf.model <- buildmer(dpf ~ temperature + group + temperature:group + (1|male) + (1|female) + (1|family) + (1|block), 
@@ -182,9 +187,6 @@ write.csv(hatch.dpf.glm.emm.confint, "data/emmeans/hatch_dpf_glm_emm.csv", row.n
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - GLM --------------------
 
-## filter to only hatched embryos
-hatch.ADD <- hatch %>% filter(!is.na(ADD), hatch == 1)
-
 ## Find best fit model - be patient!
 hatch.ADD.model <- buildmer(ADD ~ temperature + group + temperature:group + (1|family) + (1|male) + (1|female) + (1|block), 
                             direction = 'forward', data = hatch.ADD, REML = TRUE)
@@ -243,7 +245,69 @@ hatch.ADD.glm.emm.confint <- multcomp::cld(hatch.ADD.glm.emm, type = "response",
 write.csv(hatch.ADD.glm.emm.confint, "data/emmeans/hatch_ADD_glm_emm.csv", row.names = FALSE)
 
 
-#### VISUALIZATIONS ----------------------------------------------------------
+# CORRELATION WITH LATITUDE -------------------------------------------------------------------
+
+hatch.survival.corr <- hatch.survival %>% group_by(population, species, temperature, latitude) %>% 
+  summarize(mean.survival = mean(hatch)) %>% 
+  group_by(population, species, latitude) %>% 
+  filter(mean.survival == max(mean.survival)) %>% 
+  mutate(temperature = as.numeric(as.character(temperature)))
+
+lm.survival.temp <- lm(temperature ~ latitude, data = hatch.survival.corr)
+summary(lm.survival.temp)
+lm.survival.cgv <- lm(mean.survival ~ latitude, data = hatch.survival.corr)
+summary(lm.survival.cgv)
+
+ggplot(hatch.survival.corr, aes(x = latitude, y = temperature, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+ggplot(hatch.survival.corr, aes(x = latitude, y = mean.survival, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = mean.survival), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+
+hatch.dpf.corr <- hatch.dpf %>% group_by(population, species, temperature, latitude) %>% 
+  summarize(mean.dpf = mean(dpf)) %>% 
+  group_by(population, species, latitude) %>% 
+  filter(mean.dpf == max(mean.dpf)) %>% 
+  mutate(temperature = as.numeric(as.character(temperature)))
+
+lm.dpf.temp <- lm(temperature ~ latitude, data = hatch.dpf.corr)
+summary(lm.dpf.temp)
+lm.dpf.cgv <- lm(mean.dpf ~ latitude, data = hatch.dpf.corr)
+summary(lm.dpf.cgv)
+
+ggplot(hatch.dpf.corr, aes(x = latitude, y = temperature, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+ggplot(hatch.dpf.corr, aes(x = latitude, y = mean.dpf, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = mean.dpf), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+
+hatch.ADD.corr <- hatch.ADD %>% group_by(population, species, temperature, latitude) %>% 
+  summarize(mean.ADD = mean(ADD)) %>% 
+  group_by(population, species, latitude) %>% 
+  filter(mean.ADD == max(mean.ADD))
+
+lm.ADD <- lm(mean.ADD ~ latitude, data = hatch.ADD.corr)
+lm.ADD <- lm(temperature ~ latitude, data = hatch.ADD.corr)
+summary(lm.ADD)
+
+ggplot(hatch.ADD.corr, aes(x = latitude, y = mean.ADD, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = mean.ADD), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+
+
+## VISUALIZATIONS ----------------------------------------------------------
 
 ## Embryo Survival
 hatch.survival.glm.emm.confint <- hatch.survival.glm.emm.confint %>% 

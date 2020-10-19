@@ -111,6 +111,22 @@ larval.yolk.glm.emm.confint <- multcomp::cld(larval.yolk.glm.emm, type = "respon
 write.csv(larval.yolk.glm.emm.confint, "data/emmeans/larval_yolk_glm_emm.csv", row.names = FALSE)
 
 
+#### CORRELATION WITH LATITUDE -------------------------------------------------------------------
+
+larval.yolk.corr <- larval.yolk %>% group_by(population, species, temperature, latitude) %>% 
+  summarize(mean.yolk = mean(y_vol_mm3)) %>% 
+  group_by(population, species, latitude) %>% 
+  filter(mean.yolk == max(mean.yolk))
+
+lm.yolk <- lm(mean.yolk ~ latitude, data = larval.yolk.corr)
+summary(lm.yolk)
+
+ggplot(larval.yolk.corr, aes(x = latitude, y = mean.yolk, color = species)) + 
+  geom_point() +
+  geom_smooth(aes(x = latitude, y = mean.yolk), method = "lm", se = FALSE, inherit.aes = FALSE) + 
+  theme_bw()
+
+
 #### VISUALIZATIONS ----------------------------------------------------------
 
 larval.yolk.glm.emm.confint <- larval.yolk.glm.emm.confint %>% 
