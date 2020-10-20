@@ -5,13 +5,15 @@ rm(list = ls(all.names = TRUE))
 
 #### LOAD PACKAGES -----------------------------------------------------------
 
-library(dplyr)
+library(tidyverse)
 library(readxl)
-library(magrittr)
-library(ggplot2)
 library(lme4)
 library(emmeans)
 library(buildmer)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(cowplot)
 
 emm_options(pbkrtest.limit = 14000)
 
@@ -68,7 +70,7 @@ hatch.survival <- hatch %>% filter(eye != 0)
 hatch.dpf <- hatch %>% filter(!is.na(dpf), hatch == 1)
 
 ## filter to only hatched embryos
-hatch.add <- hatch %>% filter(!is.na(ADD), hatch == 1)
+hatch.ADD <- hatch %>% filter(!is.na(ADD), hatch == 1)
 
 
 #### STATISTICAL ANALYSIS - SURVIVAL - GLM -----------------------------------
@@ -114,17 +116,22 @@ anova(hatch.survival.glm.best.family, hatch.survival.glm.best, test = "Chisq")
 anova(hatch.survival.glm.best.female, hatch.survival.glm.best, test = "Chisq")
 
 ## Calculate estimated marginal means - be very patient!
-hatch.survival.glm.emm <- emmeans(hatch.survival.glm.best, ~ temperature*group)
+if(file.exists("data/emmeans/hatch_survival_glm_emm.csv") == FALSE) {
+  hatch.survival.glm.emm <- emmeans(hatch.survival.glm.best, ~ temperature*group)
 
-## Pairwise, cld, confidence intervals
-pairs(hatch.survival.glm.emm, simple = list("temperature", "group"), adjust = "fdr", type = "response") 
-hatch.survival.glm.emm.confint <- multcomp::cld(hatch.survival.glm.emm, type = "response", adjust = "fdr",
-                                                sort = F, alpha = 0.05, Letters = LETTERS) %>% 
-  mutate(.group = gsub("[[:space:]]", "", .group))
-
-## Save output to prevent having to re-run time consuming models
-write.csv(hatch.survival.glm.emm.confint, "data/emmeans/hatch_survival_glm_emm.csv", row.names = FALSE)
-
+  ## Pairwise, cld, confidence intervals
+  pairs(hatch.survival.glm.emm, simple = list("temperature", "group"), adjust = "fdr", type = "response") 
+  hatch.survival.glm.emm.confint <- multcomp::cld(hatch.survival.glm.emm, type = "response", adjust = "fdr",
+                                                  sort = F, alpha = 0.05, Letters = LETTERS) %>% 
+    mutate(.group = gsub("[[:space:]]", "", .group))
+  
+  ## Save output to prevent having to re-run time consuming models
+  write.csv(hatch.survival.glm.emm.confint, "data/emmeans/hatch_survival_glm_emm.csv", row.names = FALSE)
+} else {
+  hatch.survival.glm.emm.confint <- read.csv("data/emmeans/hatch_survival_glm_emm.csv", header = TRUE) %>% 
+    mutate(temperature = factor(temperature, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+           group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+}
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - GLM --------------------
 
@@ -174,16 +181,21 @@ anova(hatch.dpf.glm.best.female, hatch.dpf.glm.best, test = "Chisq")
 anova(hatch.dpf.glm.best.male, hatch.dpf.glm.best, test = "Chisq")
 
 ## Calculate estimated marginal means - be very patient!
-hatch.dpf.glm.emm <- emmeans(hatch.dpf.glm.best, ~ temperature*group)
+if(file.exists("data/emmeans/hatch_dpf_glm_emm.csv") == FALSE) {
+  hatch.dpf.glm.emm <- emmeans(hatch.dpf.glm.best, ~ temperature*group)
 
-## Pairwise, cld, confidence intervals
-pairs(hatch.dpf.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
-hatch.dpf.glm.emm.confint <- multcomp::cld(hatch.dpf.glm.emm, type = "response", adjust = "fdr", sort = F, alpha = 0.05, Letters = LETTERS) %>% 
-  mutate(.group = gsub("[[:space:]]", "", .group))
-
-## Save output to prevent having to re-run time consuming models
-write.csv(hatch.dpf.glm.emm.confint, "data/emmeans/hatch_dpf_glm_emm.csv", row.names = FALSE)
-
+  ## Pairwise, cld, confidence intervals
+  pairs(hatch.dpf.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
+  hatch.dpf.glm.emm.confint <- multcomp::cld(hatch.dpf.glm.emm, type = "response", adjust = "fdr", sort = F, alpha = 0.05, Letters = LETTERS) %>% 
+    mutate(.group = gsub("[[:space:]]", "", .group))
+  
+  ## Save output to prevent having to re-run time consuming models
+  write.csv(hatch.dpf.glm.emm.confint, "data/emmeans/hatch_dpf_glm_emm.csv", row.names = FALSE)
+} else {
+  hatch.dpf.glm.emm.confint <- read.csv("data/emmeans/hatch_dpf_glm_emm.csv", header = TRUE) %>% 
+    mutate(temperature = factor(temperature, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+           group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+}
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - GLM --------------------
 
@@ -233,81 +245,235 @@ anova(hatch.ADD.glm.best.female, hatch.ADD.glm.best, test = "Chisq")
 anova(hatch.ADD.glm.best.male, hatch.ADD.glm.best, test = "Chisq")
 
 ## Calculate estimated marginal means - be very patient!
-hatch.ADD.glm.emm <- emmeans(hatch.ADD.glm.best, ~ temperature*group)
+if(file.exists("data/emmeans/hatch_ADD_glm_emm.csv") == FALSE) {
+  hatch.ADD.glm.emm <- emmeans(hatch.ADD.glm.best, ~ temperature*group)
+  
+  ## Pairwise, cld, confidence intervals
+  pairs(hatch.ADD.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
+  hatch.ADD.glm.emm.confint <- multcomp::cld(hatch.ADD.glm.emm, type = "response", adjust = "fdr",
+                                             sort = F, alpha = 0.05, Letters = LETTERS) %>% 
+    mutate(.group = gsub("[[:space:]]", "", .group))
+  
+  ## Save output to prevent having to re-run time consuming models
+  write.csv(hatch.ADD.glm.emm.confint, "data/emmeans/hatch_ADD_glm_emm.csv", row.names = FALSE)
+} else {
+  hatch.ADD.glm.emm.confint <- read.csv("data/emmeans/hatch_ADD_glm_emm.csv", header = TRUE) %>% 
+    mutate(temperature = factor(temperature, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+           group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+}
 
-## Pairwise, cld, confidence intervals
-pairs(hatch.ADD.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
-hatch.ADD.glm.emm.confint <- multcomp::cld(hatch.ADD.glm.emm, type = "response", adjust = "fdr",
-                                           sort = F, alpha = 0.05, Letters = LETTERS) %>% 
-  mutate(.group = gsub("[[:space:]]", "", .group))
 
-## Save output to prevent having to re-run time consuming models
-write.csv(hatch.ADD.glm.emm.confint, "data/emmeans/hatch_ADD_glm_emm.csv", row.names = FALSE)
+#### CORRELATION WITH LATITUDE -------------------------------------------------------------------
 
+## Create dataframe with latitudes to merge
+latitude.df <- data.frame(group = c("LO-Cisco", "LS-Cisco", "LK-Whitefish", "LK-Vendace"),
+                          latitude = c(44, 47, 62.5, 62.5))
 
-# CORRELATION WITH LATITUDE -------------------------------------------------------------------
-
-hatch.survival.corr <- hatch.survival %>% group_by(population, species, temperature, latitude) %>% 
-  summarize(mean.survival = mean(hatch)) %>% 
-  group_by(population, species, latitude) %>% 
-  filter(mean.survival == max(mean.survival)) %>% 
-  mutate(temperature = as.numeric(as.character(temperature)))
+## Embryo Survival
+hatch.survival.corr <- hatch.survival.glm.emm.confint %>% filter(group != "LK-Whitefish") %>% 
+  left_join(latitude.df) %>% 
+  group_by(group, latitude) %>% 
+  filter(prob == max(prob)) %>% ungroup() %>% 
+  mutate(temperature = as.numeric(as.character(gsub("°C", "", temperature))),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "albula", temperature + 0.05, temperature),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "lavaretus", temperature - 0.05, temperature.dodge),
+         scaled.survival = prob / max(prob))
 
 lm.survival.temp <- lm(temperature ~ latitude, data = hatch.survival.corr)
 summary(lm.survival.temp)
-lm.survival.cgv <- lm(mean.survival ~ latitude, data = hatch.survival.corr)
+lm.survival.cgv <- lm(scaled.survival ~ latitude, data = hatch.survival.corr)
 summary(lm.survival.cgv)
 
-ggplot(hatch.survival.corr, aes(x = latitude, y = temperature, color = species)) + 
-  geom_point() +
-  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE) + 
-  theme_bw()
-
-ggplot(hatch.survival.corr, aes(x = latitude, y = mean.survival, color = species)) + 
-  geom_point() +
-  geom_smooth(aes(x = latitude, y = mean.survival), method = "lm", se = FALSE, inherit.aes = FALSE) + 
-  theme_bw()
-
-
-hatch.dpf.corr <- hatch.dpf %>% group_by(population, species, temperature, latitude) %>% 
-  summarize(mean.dpf = mean(dpf)) %>% 
-  group_by(population, species, latitude) %>% 
-  filter(mean.dpf == max(mean.dpf)) %>% 
-  mutate(temperature = as.numeric(as.character(temperature)))
+## Incubation Period (DPF)
+hatch.dpf.corr <- hatch.dpf.glm.emm.confint %>% filter(group != "LK-Whitefish") %>% 
+  left_join(latitude.df) %>% 
+  group_by(group, latitude) %>% 
+  filter(emmean == max(emmean)) %>% ungroup() %>% 
+  mutate(temperature = as.numeric(as.character(gsub("°C", "", temperature))),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "albula", temperature + 0.05, temperature),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "lavaretus", temperature - 0.05, temperature.dodge),
+         scaled.dpf = emmean / max(emmean))
 
 lm.dpf.temp <- lm(temperature ~ latitude, data = hatch.dpf.corr)
 summary(lm.dpf.temp)
-lm.dpf.cgv <- lm(mean.dpf ~ latitude, data = hatch.dpf.corr)
+lm.dpf.cgv <- lm(scaled.dpf ~ latitude, data = hatch.dpf.corr)
 summary(lm.dpf.cgv)
 
-ggplot(hatch.dpf.corr, aes(x = latitude, y = temperature, color = species)) + 
-  geom_point() +
-  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE) + 
-  theme_bw()
+## Incubation Period (ADD)
+hatch.ADD.corr <- hatch.ADD.glm.emm.confint %>% filter(group != "LK-Whitefish") %>% 
+  left_join(latitude.df) %>% 
+  group_by(group, latitude) %>% 
+  filter(emmean == max(emmean)) %>% ungroup() %>% 
+  mutate(temperature = as.numeric(as.character(gsub("°C", "", temperature))),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "albula", temperature + 0.05, temperature),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "lavaretus", temperature - 0.05, temperature.dodge),
+         scaled.ADD = emmean / max(emmean))
 
-ggplot(hatch.dpf.corr, aes(x = latitude, y = mean.dpf, color = species)) + 
-  geom_point() +
-  geom_smooth(aes(x = latitude, y = mean.dpf), method = "lm", se = FALSE, inherit.aes = FALSE) + 
-  theme_bw()
-
-
-hatch.ADD.corr <- hatch.ADD %>% group_by(population, species, temperature, latitude) %>% 
-  summarize(mean.ADD = mean(ADD)) %>% 
-  group_by(population, species, latitude) %>% 
-  filter(mean.ADD == max(mean.ADD))
-
-lm.ADD <- lm(mean.ADD ~ latitude, data = hatch.ADD.corr)
-lm.ADD <- lm(temperature ~ latitude, data = hatch.ADD.corr)
-summary(lm.ADD)
-
-ggplot(hatch.ADD.corr, aes(x = latitude, y = mean.ADD, color = species)) + 
-  geom_point() +
-  geom_smooth(aes(x = latitude, y = mean.ADD), method = "lm", se = FALSE, inherit.aes = FALSE) + 
-  theme_bw()
+lm.ADD.temp <- lm(temperature ~ latitude, data = hatch.ADD.corr)
+summary(lm.dpf.temp)
+lm.ADD.cgv <- lm(scaled.ADD ~ latitude, data = hatch.ADD.corr)
+summary(lm.dpf.cgv)
 
 
 
-## VISUALIZATIONS ----------------------------------------------------------
+# VISUALIZATIONS - CORRELATIONS ---------------------------------------------------------------
+
+## Embryo Survival
+plot.survival.corr.temp <- ggplot(hatch.survival.corr, aes(x = latitude, y = temperature, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(1, 3), breaks = 2, expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Incubation Temperature (°C)") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+plot.survival.corr.cgv <- ggplot(hatch.survival.corr, aes(x = latitude, y = scaled.survival, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = scaled.survival), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.7, 1.02), breaks = seq(0, 1, 0.1), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Relativized Embryo Survival") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Days Post Fertilization
+plot.dpf.corr.temp <- ggplot(hatch.dpf.corr, aes(x = latitude, y = temperature, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(1, 3), breaks = 2, expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Incubation Temperature (°C)") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+plot.dpf.corr.cgv <- ggplot(hatch.dpf.corr, aes(x = latitude, y = scaled.dpf, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = scaled.dpf), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.7, 1.02), breaks = seq(0, 1, 0.1), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Relativized DPF") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Accumulated Degree-Days
+plot.ADD.corr.temp <- ggplot(hatch.ADD.corr, aes(x = latitude, y = temperature, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(6, 8), breaks = 7, expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Incubation Temperature (°C)") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+plot.ADD.corr.cgv <- ggplot(hatch.ADD.corr, aes(x = latitude, y = scaled.ADD, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = scaled.ADD), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 5, color = "black") +
+  #annotate("text", x = 43.5, y = 0.575, hjust = 0, size = 6,
+  #         label = "All Maximum Values at 7.0°C") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.6, 1.02), breaks = seq(0, 1, 0.1), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Relativized ADD") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Combine all figures
+plot.all.corr <- grid.arrange(arrangeGrob(textGrob(""), 
+                                          get_legend(plot.survival.corr.temp),
+                                          nrow = 1,
+                                          widths = c(0.09, 1)),
+                              arrangeGrob(textGrob("A", x = 0.75, y = 0.95, gp = gpar(cex = 2, fontfamily = "Arial", fontface = "bold")),
+                                          plot.survival.corr.temp + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                          plot.survival.corr.cgv + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                          textGrob("B", x = 0.75, y = 0.95, gp = gpar(cex = 2, fontfamily = "Arial", fontface = "bold")),
+                                          plot.dpf.corr.temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          plot.dpf.corr.cgv + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          textGrob("C", x = 0.75, y = 0.95, gp = gpar(cex = 2, fontfamily = "Arial", fontface = "bold")),
+                                          plot.ADD.corr.temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          plot.ADD.corr.cgv + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          nrow = 3,
+                                          ncol = 3,
+                                          widths = c(0.07, 1, 1),
+                                          bottom = textGrob("Latitude (°N)", x = 0.545, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                              heights = c(0.025, 1)
+                              )
+
+ggsave("figures/embryo/2020-Embryo-LHT-Corr.png", plot = plot.all.corr, width = 12, height = 15, dpi = 300)
+
+
+# VISUALIZATIONS - MEANS ----------------------------------------------------------------------
 
 ## Embryo Survival
 hatch.survival.glm.emm.confint <- hatch.survival.glm.emm.confint %>% 
@@ -315,40 +481,38 @@ hatch.survival.glm.emm.confint <- hatch.survival.glm.emm.confint %>%
          jit.y = ifelse(group == "LO-Cisco" & temperature %in% c("2.0°C", "4.5°C"), (asymp.UCL * 100) + 3, jit.y),
          hjust = ifelse(group == "LS-Cisco" & temperature %in% c("2.0°C", "4.5°C", "7.0°C"), -0.4, 0.5))
 
-ggplot(hatch.survival.glm.emm.confint, aes(x = temperature, y = (prob * 100), group = group, color = group, shape = group, linetype = group)) + 
+plot.survival <- ggplot(hatch.survival.glm.emm.confint, aes(x = temperature, y = (prob * 100), group = group, color = group, shape = group, linetype = group)) + 
   geom_line(size = 1.0, position = position_dodge(0.18)) +
-  geom_point(size = 3.25, position = position_dodge(0.18)) +
-  geom_errorbar(aes(ymin = (asymp.LCL * 100), ymax = (asymp.UCL* 100)), 
+  geom_point(size = 5, position = position_dodge(0.18)) +
+  geom_errorbar(aes(ymin = (prob - SE) * 100, ymax = (prob + SE) * 100), 
                 position = position_dodge(0.18),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
-  geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 3, 
-            position = position_dodge(0.18), show.legend = FALSE) +
+  #geom_errorbar(aes(ymin = (asymp.LCL * 100), ymax = (asymp.UCL* 100)), 
+  #              position = position_dodge(0.18),
+  #              size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  #geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 4, 
+  #          position = position_dodge(0.18), show.legend = FALSE) +
   scale_x_discrete(expand = c(0, 0.2)) +
   scale_y_continuous(limits = c(0, 105), breaks = seq(0, 100, 25), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
                    labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Embryo Survival (%)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Mean Embryo Survival (%)", color = "Populations") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
-        #legend.background = element_rect(size = 0.5, linetype = "solid", colour = "black"),
-        #legend.title = element_text(face = "bold", size = 15),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
         legend.title = element_blank(),
-        legend.text = element_text(size = 15),
+        legend.text = element_text(size = 20),
         legend.key.size = unit(1.25, 'cm'),
         legend.position = "top",
-        #legend.position = c(0.8, 0.86),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-Survival-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
+#ggsave("figures/embryo/2020-Survival-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
 ## Days Post Fertilization
 hatch.dpf.glm.emm.confint <- hatch.dpf.glm.emm.confint %>% 
@@ -359,40 +523,38 @@ hatch.dpf.glm.emm.confint <- hatch.dpf.glm.emm.confint %>%
          hjust = ifelse(group == "LS-Cisco" & temperature == "7.0°C", 2.3, hjust),
          hjust = ifelse(group == "LS-Cisco" & temperature == "9.0°C", 2.1, hjust))
 
-ggplot(hatch.dpf.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
+plot.dpf <- ggplot(hatch.dpf.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
   geom_line(size = 1.0, position = position_dodge(0.18)) +
-  geom_point(size = 3.25, position = position_dodge(0.18)) +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+  geom_point(size = 5, position = position_dodge(0.18)) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), 
                 position = position_dodge(0.18),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
-  geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 3, 
-            position = position_dodge(0.18), show.legend = FALSE) +
+  #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+  #              position = position_dodge(0.18),
+  #              size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  #geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 4, 
+  #          position = position_dodge(0.18), show.legend = FALSE) +
   scale_x_discrete(expand = c(0, 0.2)) +
   scale_y_continuous(limits = c(38, 225), breaks = seq(50, 225, 25), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
                    labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (No. Days)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Mean DPF", color = "Populations") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
-        #legend.background = element_rect(size = 0.5, linetype = "solid", colour = "black"),
-        #legend.title = element_text(face = "bold", size = 15),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
         legend.title = element_blank(),
-        legend.text = element_text(size = 15),
+        legend.text = element_text(size = 20),
         legend.key.width = unit(1.25, 'cm'),
         legend.position = "top",
-        #legend.position = c(0.8, 0.86),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-DPF-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
+#ggsave("figures/embryo/2020-DPF-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
 ## Accumulated Degree-Days
 hatch.ADD.glm.emm.confint <- hatch.ADD.glm.emm.confint %>% 
@@ -401,39 +563,50 @@ hatch.ADD.glm.emm.confint <- hatch.ADD.glm.emm.confint %>%
          hjust = ifelse(group == "LO-Cisco" & temperature  == "2.0°C", -1.1, hjust),
          hjust = ifelse(group == "LO-Cisco" & temperature  == "7.0°C", -0.65, hjust))
 
-ggplot(hatch.ADD.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
+plot.ADD <- ggplot(hatch.ADD.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
   geom_line(size = 1.0, position = position_dodge(0.18)) +
-  geom_point(size = 3.25, position = position_dodge(0.18)) +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+  geom_point(size = 5, position = position_dodge(0.18)) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), 
                 position = position_dodge(0.18),
                 size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
-  geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 3, 
-            position = position_dodge(0.18), show.legend = FALSE) +
+  #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+  #              position = position_dodge(0.18),
+  #              size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  #geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 4, 
+  #          position = position_dodge(0.18), show.legend = FALSE) +
   scale_x_discrete(expand = c(0, 0.2)) +
   scale_y_continuous(limits = c(250, 850), breaks = seq(250, 850, 100), expand = c(0, 0)) +
-  #scale_color_manual("combine", values = c("#33a02c", "#b2df8a", "#1f78b4", "#a6cee3"),
-  #                   labels = c("LK-V   ", "LK-W   ", "LS-C   ", "LO-C")) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
                    labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(x = "Incubation Temperature (°C)", y = "Incubation Period (ADD °C)", color = "Populations") +
+  labs(x = "Incubation Temperature (°C)", y = "Mean ADD (°C)", color = "Populations") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 15),
-        axis.text.y = element_text(size = 15),
-        #legend.background = element_rect(size = 0.5, linetype = "solid", colour = "black"),
-        #legend.title = element_text(face = "bold", size = 15),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
         legend.title = element_blank(),
-        legend.text = element_text(size = 15),
+        legend.text = element_text(size = 20),
         legend.key.size = unit(1.25, 'cm'),
         legend.position = "top",
-        #legend.position = c(0.17, 0.88),
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-ggsave("figures/embryo/2020-ADD-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
+#ggsave("figures/embryo/2020-ADD-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
 
+## Combine all figures
+plot.all <- grid.arrange(arrangeGrob(textGrob(""), 
+                                     get_legend(plot.survival),
+                                     nrow = 1,
+                                     widths = c(0.09, 1)),
+                         arrangeGrob(plot.survival + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                     plot.dpf + theme(legend.position = "none", axis.title.x = element_blank()),
+                                     plot.ADD + theme(legend.position = "none", axis.title.x = element_blank()),
+                                     nrow = 3,
+                                     bottom = textGrob("Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
+                         heights = c(0.025, 1)
+                         )
 
+ggsave("figures/embryo/2020-Embryo-LHT-Confint.png", plot = plot.all, width = 12, height = 15, dpi = 300)

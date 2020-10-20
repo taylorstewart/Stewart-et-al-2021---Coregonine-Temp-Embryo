@@ -1,0 +1,427 @@
+#### CLEAR THE ENVIRONMENT FIRST -----------------------------------------------------------------
+
+rm(list = ls(all.names = TRUE))
+
+
+#### LOAD PACKAGES -------------------------------------------------------------------------------
+
+library(dplyr)
+library(readxl)
+library(magrittr)
+library(ggplot2)
+library(lme4)
+library(emmeans)
+library(buildmer)
+
+emm_options(pbkrtest.limit = 14000)
+
+
+#### LOAD LARVAL LENGTH DATA ---------------------------------------------------------------------
+
+larval.lo.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-2")
+larval.ls.2 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-2")
+larval.lk.2 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-2")
+larval.lo.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-4.5")
+larval.ls.4.5 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-4.5")
+larval.lk.4.5 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-4.5")
+larval.lo.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-7")
+larval.ls.7.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-7")
+larval.lk.7.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-7")
+larval.lo.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LO-9")
+larval.ls.9.0 <- read_excel("data/2020-Artedi-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LS-9")
+larval.lk.9.0 <- read_excel("data/2019-Finland-Temperature-Experiment-LarvaeMeasurements.xlsx", sheet = "LK-9")
+
+# Combine each population, temperature, and species
+larval <- bind_rows(larval.lo.2, larval.ls.2, larval.lk.2,
+                       larval.lo.4.5, larval.ls.4.5, larval.lk.4.5,
+                       larval.lo.7.0, larval.ls.7.0, larval.lk.7.0,
+                       larval.lo.9.0, larval.ls.9.0, larval.lk.9.0) %>% 
+  mutate(population = factor(population, levels = c("konnevesi", "superior", "ontario"), ordered = TRUE),
+         temperature = factor(temperature, ordered = TRUE, 
+                              levels = c(2, 4.5, 7, 9)),
+                              #labels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+         female = factor(female, levels = seq(1, 12, 1),
+                         labels = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12")),
+         male = factor(male, levels = seq(1, 16, 1),
+                       labels = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16")),
+         block = factor(block),
+         # Create a variable with population and species combined
+         group = factor(interaction(population, species), ordered = TRUE,
+                        levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi"),
+                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+
+## Separate length and yolk sac measurements and remove any missing values
+larval.tl <- larval %>% filter(!is.na(length_mm))
+larval.yolk <- larval %>% filter(!is.na(y_vol_mm3))
+
+## Clean up environment
+rm(larval.lo.2, larval.ls.2, larval.lk.2, larval.lo.4.5, larval.ls.4.5, larval.lk.4.5,
+   larval.lo.7.0, larval.ls.7.0, larval.lk.7.0, larval.lo.9.0, larval.ls.9.0, larval.lk.9.0, larval)
+
+
+#### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - GLM ------------------------------------------------
+
+## Find best fit model - be patient!
+larval.tl.model <- buildmer(length_mm ~ temperature + group + temperature:group + (1|male) + (1|female) + (1|family) + (1|block), 
+                            direction = 'forward', data = larval.tl, REML = TRUE)
+( larval.tl.glm <- formula(larval.tl.model@model))
+## length_mm ~ 1 + group + temperature + group:temperature + (1|female) + (1|male) + (1|block)
+
+## Create generalized linear mixed models
+# fit best (full) model
+larval.tl.glm.best <- lme4::lmer(larval.tl.glm, data = larval.tl)
+
+## Create generalized linear mixed models with fixed-effects removed for LRTs
+# fit best model with temperature main effect removed
+larval.tl.glm.best.temp <- lme4::lmer(length_mm ~ 1 + group + (1|female) + (1|male) + (1|block),
+                                      data = larval.tl)
+# fit best model with population main effect removed
+larval.tl.glm.best.pop <- lme4::lmer(length_mm ~ 1 + temperature + (1|female) + (1|male) + (1|block),
+                                     data = larval.tl)
+
+## Create generalized linear mixed models with random-effects removed for LRTs
+# fit best model with female random-effect removed
+larval.tl.glm.best.female <- lme4::lmer(length_mm ~ 1 + group + temperature + group:temperature +
+                                          (1|male) + (1|block),
+                                        data = larval.tl)
+# fit best model with male random-effect removed
+larval.tl.glm.best.male <- lme4::lmer(length_mm ~ 1 + group + temperature + group:temperature +
+                                        (1|female) + (1|block),
+                                      data = larval.tl)
+# fit best model with plate random-effect removed
+larval.tl.glm.best.block <- lme4::lmer(length_mm ~ 1 + group + temperature + group:temperature +
+                                         (1|female) + (1|male),
+                                       data = larval.tl)
+
+## Calculate LRT for both temperature and population fixed-effects and interaction
+# temperature:population (significant; main effects irrelevant)
+drop1(larval.tl.glm.best, test = "Chisq")
+# temperature
+anova(larval.tl.glm.best.temp, larval.tl.glm.best, test = "Chisq")
+# population
+anova(larval.tl.glm.best, larval.tl.glm.best.pop, test = "Chisq")
+
+## Calculate LRT for female, male, and block random-effects
+# female
+anova(larval.tl.glm.best.female, larval.tl.glm.best, test = "Chisq")
+# male
+anova(larval.tl.glm.best.male, larval.tl.glm.best, test = "Chisq")
+# block
+anova(larval.tl.glm.best.block, larval.tl.glm.best, test = "Chisq")
+
+## Calculate estimated marginal means - be very patient!
+if(file.exists("data/emmeans/larval_tl_glm_emm.csv") == FALSE) {
+  larval.tl.glm.emm <- emmeans(larval.tl.glm.best, ~ temperature*group)
+
+  ## Pairwise, cld, confidence intervals
+  pairs(larval.tl.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
+  larval.tl.glm.emm.confint <- multcomp::cld(larval.tl.glm.emm, type = "response", adjust = "fdr", sort = F, alpha = 0.05, Letters = LETTERS) %>% 
+    mutate(.group = gsub("[[:space:]]", "", .group))
+  
+  ## Save output to prevent having to re-run time consuming models
+  write.csv(larval.tl.glm.emm.confint, "data/emmeans/larval_tl_glm_emm.csv", row.names = FALSE)
+} else {
+  larval.tl.glm.emm.confint <- read.csv("data/emmeans/larval_tl_glm_emm.csv", header = TRUE) %>% 
+    mutate(temperature = factor(temperature, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+           group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+}
+
+
+
+#### STATISTICAL ANALYSIS - YOLK-SAC VOLUME - GLM ------------------------------------------------
+
+## Find best fit model - be patient!
+larval.yolk.model <- buildmer(y_vol_mm3 ~ temperature + group + temperature:group + (1|male) + (1|female) + (1|family) + (1|block), 
+                              direction = 'forward', data = larval.yolk, REML = TRUE)
+( larval.yolk.glm <- formula(larval.yolk.model@model))
+## y_vol_mm3 ~ 1 + group + temperature + group:temperature + (1|female) + (1|block)
+
+## Create generalized linear mixed models
+# fit best (full) model
+larval.yolk.glm.best <- lme4::lmer(larval.yolk.glm, data = larval.yolk)
+
+## Create generalized linear mixed models with fixed-effects removed for LRTs
+# fit best model with temperature main effect removed
+larval.yolk.glm.best.temp <- lme4::lmer(y_vol_mm3 ~ 1 + group + (1|female) + (1|block),
+                                        data = larval.yolk)
+# fit best model with population main effect removed
+larval.yolk.glm.best.pop <- lme4::lmer(y_vol_mm3 ~ 1 + temperature + (1|female) + (1|block),
+                                       data = larval.yolk)
+
+## Create generalized linear mixed models with random-effects removed for LRTs
+# fit best model with female random-effect removed
+larval.yolk.glm.best.female <- lme4::lmer(y_vol_mm3 ~ 1 + group + temperature + group:temperature + (1|block),
+                                          data = larval.yolk)
+# fit best model with plate random-effect removed
+larval.yolk.glm.best.block <- lme4::lmer(y_vol_mm3 ~ 1 + group + temperature + group:temperature + (1|female),
+                                         data = larval.yolk)
+
+## Calculate LRT for both temperature and population fixed-effects and interaction
+# temperature:population (significant; main effects irrelevant)
+drop1(larval.yolk.glm.best, test = "Chisq")
+# temperature
+anova(larval.yolk.glm.best.temp, larval.yolk.glm.best, test = "Chisq")
+# population
+anova(larval.yolk.glm.best, larval.yolk.glm.best.pop, test = "Chisq")
+
+## Calculate LRT for female and block random-effects
+# female
+anova(larval.yolk.glm.best.female, larval.yolk.glm.best, test = "Chisq")
+# block
+anova(larval.yolk.glm.best.block, larval.yolk.glm.best, test = "Chisq")
+
+## Calculate estimated marginal means - be very patient!
+if(file.exists("data/emmeans/larval_yolk_glm_emm.csv") == FALSE) {
+  larval.yolk.glm.emm <- emmeans(larval.yolk.glm.best, ~ temperature*group)
+
+  ## Pairwise, cld, confidence intervals
+  pairs(larval.yolk.glm.emm, simple = "temperature", adjust = "fdr", type = "response") 
+  larval.yolk.glm.emm.confint <- multcomp::cld(larval.yolk.glm.emm, type = "response", adjust = "fdr", sort = F, alpha = 0.05, Letters = LETTERS) %>% 
+    mutate(.group = gsub("[[:space:]]", "", .group),
+           lower.CL = ifelse(lower.CL < 0, 0, lower.CL))
+  
+  ## Save output to prevent having to re-run time consuming models
+  write.csv(larval.yolk.glm.emm.confint, "data/emmeans/larval_yolk_glm_emm.csv", row.names = FALSE)
+} else {
+  larval.yolk.glm.emm.confint <- read.csv("data/emmeans/larval_yolk_glm_emm.csv", header = TRUE) %>% 
+    mutate(temperature = factor(temperature, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
+           group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+}
+
+
+#### CORRELATION WITH LATITUDE -------------------------------------------------------------------
+
+## Create dataframe with latitudes to merge
+latitude.df <- data.frame(group = c("LO-Cisco", "LS-Cisco", "LK-Whitefish", "LK-Vendace"),
+                         latitude = c(44, 47, 62.5, 62.5))
+
+## Length-at-Hatch
+larval.tl.corr <- larval.tl.glm.emm.confint %>% filter(group != "LK-Whitefish") %>% 
+  left_join(latitude.df) %>% 
+  group_by(group, latitude) %>% 
+  filter(emmean == max(emmean)) %>% ungroup() %>% 
+  mutate(temperature = as.numeric(as.character(gsub("°C", "", temperature))),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "albula", temperature + 0.05, temperature),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "lavaretus", temperature - 0.05, temperature.dodge),
+         scaled.tl = emmean / max(emmean))
+
+lm.tl.temp <- lm(temperature ~ latitude, data = larval.tl.corr)
+summary(lm.tl.temp)
+lm.tl.cgv <- lm(scaled.tl ~ latitude, data = larval.tl.corr)
+summary(lm.tl.cgv)
+
+## Yolk-sac Volume
+larval.yolk.corr <- larval.yolk.glm.emm.confint %>% filter(group != "LK-Whitefish") %>% 
+  left_join(latitude.df) %>% 
+  group_by(group, latitude) %>% 
+  filter(emmean == max(emmean)) %>% ungroup() %>% 
+  mutate(temperature = as.numeric(as.character(gsub("°C", "", temperature))),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "albula", temperature + 0.05, temperature),
+         #temperature.dodge = ifelse(population == "konnevesi" & species == "lavaretus", temperature - 0.05, temperature.dodge),
+         scaled.yolk = emmean / max(emmean))
+
+lm.yolk.temp <- lm(temperature ~ latitude, data = larval.yolk.corr)
+summary(lm.yolk.temp)
+lm.yolk.cgv <- lm(scaled.yolk ~ latitude, data = larval.yolk.corr)
+summary(lm.yolk.cgv)
+
+
+#### VISUALIZATIONS - CORRELATIONS ---------------------------------------------------------------
+
+## Days Post Fertilization
+plot.tl.corr.temp <- ggplot(larval.tl.corr, aes(x = latitude, y = temperature, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 4, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(1, 5), breaks = c(2, 4.5), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Incubation Temperature (°C)") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+plot.tl.corr.cgv <- ggplot(larval.tl.corr, aes(x = latitude, y = scaled.tl, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = scaled.tl), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 4, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.6, 1.02), breaks = seq(0, 1, 0.1), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8, 
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Relativized LAH") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Yolk-sac Volume
+plot.yolk.corr.temp <- ggplot(larval.yolk.corr, aes(x = latitude, y = temperature, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = temperature), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 4, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(8, 10), breaks = 9, expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Incubation Temperature (°C)") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+plot.yolk.corr.cgv <- ggplot(larval.yolk.corr, aes(x = latitude, y = scaled.yolk, fill = group, shape = group)) + 
+  geom_smooth(aes(x = latitude, y = scaled.yolk), method = "lm", se = FALSE, inherit.aes = FALSE, color = "black") + 
+  geom_point(size = 4, color = "black") +
+  scale_x_continuous(limits = c(42.5, 63.5), breaks = seq(43, 63, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.18, 1.03), breaks = seq(0, 1, 0.1), expand = c(0, 0)) +
+  scale_fill_grey("combine", start = 0.0, end = 0.8,
+                  labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(24, 21, 22), 
+                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Latitude (°N)", y = "Relativized YSV") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 15, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.key.size = unit(0.75, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Combine all figures
+plot.all.corr <- grid.arrange(arrangeGrob(textGrob(""), 
+                                          get_legend(plot.tl.corr.temp),
+                                          nrow = 1,
+                                          widths = c(0.09, 1)),
+                              arrangeGrob(textGrob("A", x = 0.65, y = 0.95, gp = gpar(cex = 2, fontfamily = "Arial", fontface = "bold")),
+                                          plot.tl.corr.temp + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                          plot.tl.corr.cgv + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                          textGrob("B", x = 0.65, y = 0.95, gp = gpar(cex = 2, fontfamily = "Arial", fontface = "bold")),
+                                          plot.yolk.corr.temp + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          plot.yolk.corr.cgv + theme(legend.position = "none", axis.title.x = element_blank()),
+                                          nrow = 2,
+                                          ncol = 3,
+                                          widths = c(0.05, 1, 1),
+                                          bottom = textGrob("Latitude (°N)", x = 0.545, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                              heights = c(0.025, 1)
+                              )
+
+ggsave("figures/larvae/2020-Larval-MT-Corr.png", plot = plot.all.corr, width = 12, height = 10, dpi = 300)
+
+
+#### VISUALIZATIONS ----------------------------------------------------------
+
+## Length-at-Hatch
+larval.tl.glm.emm.confint <- larval.tl.glm.emm.confint %>% 
+  mutate(jit.y = ifelse(group == "LK-Whitefish" & temperature == "2.0°C", upper.CL-0.09, upper.CL+0.13),
+         jit.y = ifelse(group == "LS-Cisco" & temperature == "4.5°C", upper.CL-0.09, jit.y),
+         jit.y = ifelse(group == "LK-Whitefish" & temperature == "9.0°C", upper.CL-0.09, jit.y),
+         hjust = ifelse(group == "LK-Whitefish" & temperature == "2.0°C", 1.4, 0.5),
+         hjust = ifelse(group == "LS-Cisco" & temperature == "4.5°C", -0.45, hjust),
+         hjust = ifelse(group == "LK-Whitefish" & temperature == "9.0°C", 1.8, hjust))
+
+plot.tl <- ggplot(larval.tl.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
+  geom_line(size = 1.0, position = position_dodge(0.18)) +
+  geom_point(size = 3.25, position = position_dodge(0.18)) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+                position = position_dodge(0.18),
+                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 4, 
+            position = position_dodge(0.18), show.legend = FALSE) +
+  scale_x_discrete(expand = c(0, 0.2)) +
+  scale_y_continuous(limits = c(6, 12.2), breaks = seq(6, 12, 1), expand = c(0, 0)) +
+  scale_color_grey("combine", start = 0.0, end = 0.8,
+                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(2, 5, 1, 0), 
+                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
+                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = "Incubation Temperature (°C)", y = "Mean LAH (mm)", color = "Populations") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 15),
+        legend.key.size = unit(1.25, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+#ggsave("figures/larvae/2020-LAH-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
+
+## Yolk-sac Volume
+larval.yolk.glm.emm.confint <- larval.yolk.glm.emm.confint %>% 
+  mutate(jit.y = ifelse(group == "LK-Vendace" & temperature == "7.0°C", upper.CL-0.025, upper.CL+0.04),
+         hjust = ifelse(group == "LK-Vendace" & temperature == "7.0°C", 2, 0.5))
+
+plot.yolk <- ggplot(larval.yolk.glm.emm.confint, aes(x = temperature, y = emmean, group = group, color = group, shape = group, linetype = group)) + 
+  geom_line(size = 1.0, position = position_dodge(0.18)) +
+  geom_point(size = 3.25, position = position_dodge(0.18)) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+                position = position_dodge(0.18),
+                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+  geom_text(aes(label = .group, y = jit.y, hjust = hjust), size = 4, 
+            position = position_dodge(0.18), show.legend = FALSE) +
+  scale_x_discrete(expand = c(0, 0.2)) +
+  scale_y_continuous(limits = c(-0.05, 1.8), breaks = seq(0, 1.8, 0.2), expand = c(0, 0)) +
+  scale_color_grey("combine", start = 0.0, end = 0.8,
+                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_shape_manual("combine", values = c(2, 5, 1, 0), 
+                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
+                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  labs(x = 'Incubation Temperature (°C)', y = expression("Mean YSV (mm"^3*")")) +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 15),
+        legend.key.size = unit(1.25, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+#ggsave("figures/larvae/2020-YSV-BW-Confint.png", width = 8.5, height = 6, dpi = 300)
+
+## Combine all figures
+plot.all <- grid.arrange(arrangeGrob(textGrob(""), 
+                                     get_legend(plot.tl),
+                                     nrow = 1,
+                                     widths = c(0.09, 1)),
+                         arrangeGrob(plot.tl + theme(legend.position = "none", axis.title.x = element_blank()), 
+                                     plot.yolk + theme(legend.position = "none", axis.title.x = element_blank()),
+                                     nrow = 2,
+                                     bottom = textGrob("Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
+                         heights = c(0.025, 1)
+                         )
+
+ggsave("figures/larvae/2020-Larval-MT-Confint.png", plot = plot.all, width = 12, height = 10, dpi = 300)
+
