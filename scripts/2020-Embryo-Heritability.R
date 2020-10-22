@@ -75,86 +75,75 @@ hatch.survival <- hatch %>% filter(eye != 0)
 hatch.dpf <- hatch %>% filter(!is.na(dpf), hatch == 1)
 
 ## filter to only hatched embryos
-hatch.add <- hatch %>% filter(!is.na(ADD), hatch == 1)
+hatch.ADD <- hatch %>% filter(!is.na(ADD), hatch == 1)
 
 
 # STATISTICAL ANALYSIS - SURVIVAL - HERITABILITY --------------------------
 
-## Run nested loop to create a bootstrapped dataset for each temperature and population
-if(file.exists("data/Heritability_Bootstrap/heritability_survival_boot_fish.csv") == FALSE) {
-
-  heritability.survival.boot.fish <- do.call(rbind, mclapply(unique(hatch.survival$group), mc.cores = 8, function(grp) {
+## Run loop to calculate genetic variances for each temperature and population
+start <- Sys.time()
+if(file.exists("data/heritability_bootstrap/heritability_survival_var_boot.csv") == FALSE) {
+  heritability.survival.boot <- do.call(rbind, mclapply(unique(hatch.survival$group), mc.cores = detectCores(), function(grp) {
     ## Filter to only a single temperature treatment
-    data.filt <- hatch.survival %>% filter(group == grp) %>% 
-        select(family, dam, sire, block, hatch.raw = hatch)
-      
-      ## Create a bootstrapped data set from each temperature and group
-      bootstrap.data <- do.call(cbind, lapply(1:10000, function(length) {
-        ## create a vector of randomly generated data (randomly sample each variable and repeat by nrow(data.temp.group))
-        data.family <- do.call(rbind, lapply(unique(data.filt$family), function(fam) {
-          data.family <- data.filt %>% filter(family == fam)
-          hatch.boot <- sample(data.family$hatch.raw, replace = T, size = nrow(data.family))
-          data.family.boot <- data.frame(data.family, hatch.boot) %>% select(-hatch.raw)
-        })) %>% 
-          mutate(family = factor(family),
-                 dam = factor(dam),
-                 sire = factor(sire),
-                 block = factor(block))
-        
-        colnames(data.family) <- c(paste0("family", length), paste0("dam", length), paste0("sire", length), 
-                                   paste0("block", length), paste0("hatch", length))
-        data.family
+    data.group <- hatch.survival %>% filter(group == grp) %>% 
+      select(family, dam, sire, block, hatch.raw = hatch)
+    
+    ## Create a bootstrapped data set from each temperature and group
+    bootstrap.data <- do.call(cbind, lapply(1:10000, function(length) {
+      ## create a vector of randomly generated data (randomly sample each variable and repeat by nrow(data.temp.group))
+      data.family <- do.call(rbind, lapply(unique(data.group$family), function(fam) {
+        data.family <- data.group %>% filter(family == fam)
+        hatch.boot <- sample(data.family$hatch.raw, replace = T, size = nrow(data.family))
+        data.family.boot <- data.frame(data.family, hatch.boot) %>% select(-hatch.raw)
       })) %>% 
-        transmute(group = grp, !!!.)
+        mutate(family = factor(family),
+               dam = factor(dam),
+               sire = factor(sire),
+               block = factor(block))
       
-  }))
-  
-  ## Save the bootstrapped fish for future use
-  write.csv(heritability.survival.boot.fish, "data/Heritability_Bootstrap/heritability_survival_boot_fish.csv", row.names = FALSE)
-} else {
-  heritability.survival.boot.fish <- fread("data/Heritability_Bootstrap/heritability_survival_boot_fish.csv")
-}
-
-## Run nested loop to run narrow-sense heritability calculations for each temperature and population
-if(file.exists("data/Heritability_Bootstrap/heritability_survival_boot_10000.csv") == FALSE) {
-  
-  heritability.survival.boot <- do.call(rbind, mclapply(unique(heritability.survival.boot.fish$group), mc.cores = 8, function(grp) {
-    ## Filter to only a single temperature treatment
-    data.group <- heritability.survival.boot.fish %>% filter(group == grp)
+      colnames(data.family) <- c(paste0("family", length), paste0("dam", length), paste0("sire", length), 
+                                 paste0("block", length), paste0("hatch", length))
+      data.family
+    })) %>% 
+      transmute(group = grp, !!!.)
+    
+    ## Save bootstrapped fish data
+    write.csv(bootstrap.data, paste0("data/heritability_bootstrap/survival/heritability_survival_boot_fish_", grp ,".csv"), row.names = FALSE)
     
     ## Calculate variance components from bootstrapped sample
-    bootstrap.data.glmer2 <- resampGlmer2(resamp = data.group, dam = "dam", sire = "sire", response = "hatch",
+    bootstrap.data.glmer2 <- resampGlmer2(resamp = bootstrap.data, dam = "dam", sire = "sire", response = "hatch",
                                           block = "block", fam_link = binomial(logit), start = 1, end = 10000)
     
     bootstrap.data.glmer2.h2 <- data.frame(bootstrap.data.glmer2) %>% 
-      mutate(group = grp, rep = 1:n()) %>% 
-      select(group, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
-  })) %>% 
-    mutate(trait = "survival")
+      mutate(group = grp, rep = 1:n(), trait = "survival") %>% 
+      select(group, trait, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
+  }))
   
-  ## Save the bootstrapped data for future use
-  write.csv(heritability.survival.boot, "data/Heritability_Bootstrap/heritability_survival_boot_10000.csv", row.names = FALSE)
+  ## Save variances for future use
+  write.csv(heritability.survival.boot, "data/heritability_bootstrap/heritability_survival_var_boot.csv", row.names = FALSE)
 } else {
-  heritability.survival.boot <- fread("data/Heritability_Bootstrap/heritability_survival_boot_10000.csv")
+  heritability.survival.boot <- fread("data/heritability_bootstrap/heritability_survival_var_boot.csv")
 }
-rm(heritability.survival.boot.fish)
+
+end <- Sys.time()
+end - start
 
 
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - HERITABILITY -----------
 
-## Run nested loop to create a bootstrapped dataset for each temperature and population
-if(file.exists("data/Heritability_Bootstrap/heritability_dpf_boot_fish.csv") == FALSE) {
-  
-  heritability.dpf.boot.fish <- do.call(rbind, mclapply(unique(hatch.dpf$group), mc.cores = 8, function(grp) {
+## Run loop to calculate genetic variances for each temperature and population
+start <- Sys.time()
+if(file.exists("data/heritability_bootstrap/heritability_dpf_var_boot.csv") == FALSE) {
+  heritability.dpf.boot <- do.call(rbind, mclapply(unique(hatch.dpf$group), mc.cores = detectCores(), function(grp) {
     ## Filter to only a single temperature treatment
-    data.filt <- hatch.dpf %>% filter(group == grp) %>% 
+    data.group <- hatch.dpf %>% filter(group == grp) %>% 
       select(family, dam, sire, block, dpf.raw = dpf)
     
     ## Create a bootstrapped data set from each temperature and group
     bootstrap.data <- do.call(cbind, lapply(1:10000, function(length) {
       ## create a vector of randomly generated data (randomly sample each variable and repeat by nrow(data.temp.group))
-      data.family <- do.call(rbind, lapply(unique(data.filt$family), function(fam) {
-        data.family <- data.filt %>% filter(family == fam)
+      data.family <- do.call(rbind, lapply(unique(data.group$family), function(fam) {
+        data.family <- data.group %>% filter(family == fam)
         dpf.boot <- sample(data.family$dpf.raw, replace = T, size = nrow(data.family))
         data.family.boot <- data.frame(data.family, dpf.boot) %>% select(-dpf.raw)
       })) %>% 
@@ -169,54 +158,43 @@ if(file.exists("data/Heritability_Bootstrap/heritability_dpf_boot_fish.csv") == 
     })) %>% 
       transmute(group = grp, !!!.)
     
+    ## Save bootstrapped fish data
+    write.csv(bootstrap.data, paste0("data/heritability_bootstrap/dpf/heritability_dpf_boot_fish_", grp ,".csv"), row.names = FALSE)
+    
+    ## Calculate variance components from bootstrapped sample
+    bootstrap.data.glmer2 <- resampGlmer2(resamp = bootstrap.data, dam = "dam", sire = "sire", response = "dpf",
+                                          block = "block", fam_link = binomial(logit), start = 1, end = 10000)
+    
+    bootstrap.data.glmer2.h2 <- data.frame(bootstrap.data.glmer2) %>% 
+      mutate(group = grp, rep = 1:n(), trait = "dpf") %>% 
+      select(group, trait, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
   }))
   
-  ## Save the bootstrapped fish for future use
-  write.csv(heritability.dpf.boot.fish, "data/Heritability_Bootstrap/heritability_dpf_boot_fish.csv", row.names = FALSE)
+  ## Save variances for future use
+  write.csv(heritability.dpf.boot, "data/heritability_bootstrap/heritability_dpf_var_boot.csv", row.names = FALSE)
 } else {
-  heritability.dpf.boot.fish <- fread("data/Heritability_Bootstrap/heritability_dpf_boot_fish.csv")
+  heritability.dpf.boot <- fread("data/heritability_bootstrap/heritability_dpf_var_boot.csv")
 }
 
-## Run nested loop to run narrow-sense heritability calculations for each temperature and population
-if(file.exists("data/Heritability_Bootstrap/heritability_dpf_boot_10000.csv") == FALSE) {
-  
-  heritability.dpf.boot <- do.call(rbind, mclapply(unique(heritability.dpf.boot.fish$group), mc.cores = 8, function(temp) {
-    ## Filter to only a single population and temperature treatment
-    data.group <- heritability.dpf.boot.fish %>% filter(group == grp)
-    
-      ## Calculate variance components from bootstrapped sample
-      bootstrap.data.lmer2 <- resampLmer2(resamp = data.group, dam = "dam", sire = "sire", response = "dpf",
-                                          block = "block", start = 1, end = 10000)
-      
-      bootstrap.data.lmer2.h2 <- data.frame(bootstrap.data.lmer2) %>% 
-        mutate(group = grp, rep = 1:n()) %>% 
-        select(group, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
-  })) %>% 
-    mutate(trait = "dpf")
-  
-  ## Save the bootstrapped data for future use
-  write.csv(heritability.dpf.boot, "data/Heritability_Bootstrap/heritability_dpf_boot_10000.csv", row.names = FALSE)
-} else {
-  heritability.dpf.boot <- fread("data/Heritability_Bootstrap/heritability_dpf_boot_10000.csv")
-}
-rm(heritability.dpf.boot.fish)
+end <- Sys.time()
+end - start
 
 
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - HERITABILITY -----------
 
-## Run nested loop to create a bootstrapped dataset for each temperature and population
-if(file.exists("data/Heritability_Bootstrap/heritability_ADD_boot_fish.csv") == FALSE) {
-  
-  heritability.ADD.boot.fish <- do.call(rbind, mclapply(unique(hatch.add$group), mc.cores = 8, function(grp) {
+## Run loop to calculate genetic variances for each temperature and population
+start <- Sys.time()
+if(file.exists("data/heritability_bootstrap/heritability_ADD_var_boot.csv") == FALSE) {
+  heritability.ADD.boot <- do.call(rbind, mclapply(unique(hatch.ADD$group), mc.cores = detectCores(), function(grp) {
     ## Filter to only a single temperature treatment
-    data.filt <- hatch.add %>% filter(group == grp) %>% 
+    data.group <- hatch.ADD %>% filter(group == grp) %>% 
       select(family, dam, sire, block, ADD.raw = ADD)
     
     ## Create a bootstrapped data set from each temperature and group
     bootstrap.data <- do.call(cbind, lapply(1:10000, function(length) {
       ## create a vector of randomly generated data (randomly sample each variable and repeat by nrow(data.temp.group))
-      data.family <- do.call(rbind, lapply(unique(data.filt$family), function(fam) {
-        data.family <- data.filt %>% filter(family == fam)
+      data.family <- do.call(rbind, lapply(unique(data.group$family), function(fam) {
+        data.family <- data.group %>% filter(family == fam)
         ADD.boot <- sample(data.family$ADD.raw, replace = T, size = nrow(data.family))
         data.family.boot <- data.frame(data.family, ADD.boot) %>% select(-ADD.raw)
       })) %>% 
@@ -231,37 +209,26 @@ if(file.exists("data/Heritability_Bootstrap/heritability_ADD_boot_fish.csv") == 
     })) %>% 
       transmute(group = grp, !!!.)
     
-  }))
-  
-  ## Save the bootstrapped fish for future use
-  write.csv(heritability.ADD.boot.fish, "data/Heritability_Bootstrap/heritability_ADD_boot_fish.csv", row.names = FALSE)
-} else {
-  heritability.ADD.boot.fish <- fread("data/Heritability_Bootstrap/heritability_ADD_boot_fish.csv")
-}
-
-if(file.exists("data/Heritability_Bootstrap/heritability_ADD_boot_10000.csv") == FALSE) {
-  
-  heritability.ADD.boot <- do.call(rbind, mclapply(unique(heritability.ADD.boot.fish$group), mc.cores = 8, function(temp) {
-    ## Filter to only a single population and temperature treatment
-    data.group <- heritability.ADD.boot.fish %>% filter(group == grp)
+    ## Save bootstrapped fish data
+    write.csv(bootstrap.data, paste0("data/heritability_bootstrap/add/heritability_ADD_boot_fish_", grp ,".csv"), row.names = FALSE)
     
     ## Calculate variance components from bootstrapped sample
-    bootstrap.data.lmer2 <- resampLmer2(resamp = data.group, dam = "dam", sire = "sire", response = "ADD",
-                                        block = "block", start = 1, end = 10000)
+    bootstrap.data.glmer2 <- resampGlmer2(resamp = bootstrap.data, dam = "dam", sire = "sire", response = "ADD",
+                                          block = "block", fam_link = binomial(logit), start = 1, end = 10000)
     
-    bootstrap.data.lmer2.h2 <- data.frame(bootstrap.data.lmer2) %>% 
-      mutate(group = grp, rep = 1:n()) %>% 
-      select(group, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
-  })) %>% 
-    mutate(trait = "ADD")
+    bootstrap.data.glmer2.h2 <- data.frame(bootstrap.data.glmer2) %>% 
+      mutate(group = grp, rep = 1:n(), trait = "ADD") %>% 
+      select(group, trait, rep, sire, dam, dam.sire, block, residual = Residual, total = Total, additive, nonadd, maternal)
+  }))
   
-  ## Save the bootstrapped data for future use
-  write.csv(heritability.ADD.boot, "data/Heritability_Bootstrap/heritability_ADD_boot_10000.csv", row.names = FALSE)
+  ## Save variances for future use
+  write.csv(heritability.ADD.boot, "data/heritability_bootstrap/heritability_ADD_var_boot.csv", row.names = FALSE)
 } else {
-  ## If this has already been run, load previous data
-  heritability.ADD.boot <- fread("data/Heritability_Bootstrap/heritability_ADD_boot_10000.csv")
+  heritability.ADD.boot <- fread("data/heritability_bootstrap/heritability_ADD_var_boot.csv")
 }
-rm(heritability.ADD.boot.fish)
+
+end <- Sys.time()
+end - start
 
 
 # STATISTICAL ANALYSIS - GENERATE OBSERVED HERITABILITY ---------------------------------------

@@ -12,6 +12,4 @@ pictures/.DS_Store
 README.html
 
 # Ignore files too large to push
-data/Heritability_Bootstrap/heritability_survival_boot_fish.csv
-data/Heritability_Bootstrap/heritability_dpf_boot_fish.csv
-data/Heritability_Bootstrap/heritability_ADD_boot_fish.csv
+data/Heritability_Bootstrap/
