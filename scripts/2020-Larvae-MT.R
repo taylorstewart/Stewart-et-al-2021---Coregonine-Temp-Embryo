@@ -11,6 +11,7 @@ library(lme4)
 library(lmerTest)
 library(afex)
 library(buildmer)
+library(emmeans)
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -69,6 +70,12 @@ larval.tl.na.glm.final <- lmer(larval.tl.na.glm.formula, data = larval.tl.na)
 ## likelihood ratio test for fixed and random effects
 mixed(larval.tl.na.glm.formula, data = larval.tl.na, method = "LRT")
 rand(larval.tl.na.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+larval.tl.glm.emm <- emmeans(larval.tl.na.glm.final, ~ temperature | group)
+
+## Pairwise
+pairs(larval.tl.glm.emm, simple = list("temperature", "group"), adjust = "tukey", type = "response") 
 
 
 # STATISTICAL ANALYSIS - LENGTH-AT-HATCH - FI -------------------------------------------------
