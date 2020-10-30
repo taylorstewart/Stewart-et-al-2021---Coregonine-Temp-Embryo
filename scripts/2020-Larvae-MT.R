@@ -214,7 +214,7 @@ plot.all <- grid.arrange(arrangeGrob(textGrob(""),
                          arrangeGrob(plot.tl + theme(legend.position = "none", axis.title.x = element_blank()), 
                                      plot.yolk + theme(legend.position = "none", axis.title.x = element_blank()),
                                      nrow = 2,
-                                     bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
+                                     bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.5, fontfamily = "Arial"))),
                          heights = c(0.025, 1)
                          )
 
