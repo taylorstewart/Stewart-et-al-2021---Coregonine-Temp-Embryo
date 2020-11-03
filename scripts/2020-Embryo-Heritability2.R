@@ -244,17 +244,24 @@ heritability.survival.obs <- do.call(rbind, lapply(unique(hatch.survival$group),
   
   obs.survival <- observGlmer2(observ = data.group, dam = "dam", sire = "sire", response = "hatch",
                                block = "block", fam_link = binomial(logit))
-  
+
   obs.survival.df <- data.frame(group = grp,
+                                sire = obs.survival$random[2,2],
+                                dam = obs.survival$random[3,2],
+                                dam.sire = obs.survival$random[1,2],
                                 block = obs.survival$random[4,2],
-                                residual = obs.survival$other[1,2],
-                                additive = obs.survival$calculation[1,2],
-                                nonadd = obs.survival$calculation[2,2],
-                                maternal = obs.survival$calculation[3,2]) %>% 
-    mutate(pheno = additive + maternal + residual,
-           h2.obs = additive / pheno,
-           maternal.obs = maternal / pheno) %>% 
-    select(group, h2.obs, maternal.obs)
+                                residual.obs = obs.survival$other[1,2],
+                                total = obs.survival$other[2,2],
+                                additive.obs = obs.survival$calculation[1,2],
+                                nonadd.obs = obs.survival$calculation[2,2],
+                                maternal.obs = obs.survival$calculation[3,2]) %>% 
+    mutate(pheno.obs = additive.obs + nonadd.obs + residual.obs + block,
+           h2.obs = additive.obs / pheno.obs) %>% 
+    ## Calculate variance percentages
+    mutate(residual.obs.perc = residual.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           additive.obs.perc = additive.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           nonadditive.obs.perc = nonadd.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           maternal.obs.perc = maternal.obs / sum(sire, dam, dam.sire, block, residual.obs))
 }))
 
 ## DPF
@@ -266,15 +273,22 @@ heritability.dpf.obs <- do.call(rbind, lapply(unique(hatch.dpf$group), function(
   obs.dpf <- observLmer2(observ = data.group, dam = "dam", sire = "sire", response = "dpf", block = "block")
   
   obs.dpf.df <- data.frame(group = grp,
+                           sire = obs.dpf$random[2,2],
+                           dam = obs.dpf$random[3,2],
+                           dam.sire = obs.dpf$random[1,2],
                            block = obs.dpf$random[4,2],
-                           residual = obs.dpf$other[1,2],
-                           additive = obs.dpf$calculation[1,2],
-                           nonadd = obs.dpf$calculation[2,2],
-                           maternal = obs.dpf$calculation[3,2]) %>% 
-    mutate(pheno = additive + maternal + residual,
-           h2.obs = additive / pheno,
-           maternal.obs = maternal / pheno) %>% 
-    select(group, h2.obs, maternal.obs)
+                           residual.obs = obs.dpf$other[1,2],
+                           total = obs.dpf$other[2,2],
+                           additive.obs = obs.dpf$calculation[1,2],
+                           nonadd.obs = obs.dpf$calculation[2,2],
+                           maternal.obs = obs.dpf$calculation[3,2]) %>% 
+    mutate(pheno.obs = additive.obs + nonadd.obs + residual.obs + block,
+           h2.obs = additive.obs / pheno.obs) %>% 
+    ## Calculate variance percentages
+    mutate(residual.obs.perc = residual.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           additive.obs.perc = additive.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           nonadditive.obs.perc = nonadd.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           maternal.obs.perc = maternal.obs / sum(sire, dam, dam.sire, block, residual.obs))
 }))
 
 ## ADD
@@ -286,88 +300,117 @@ heritability.ADD.obs <- do.call(rbind, lapply(unique(hatch.ADD$group), function(
   obs.ADD <- observLmer2(observ = data.group, dam = "dam", sire = "sire", response = "ADD", block = "block")
   
   obs.ADD.df <- data.frame(group = grp,
+                           sire = obs.ADD$random[2,2],
+                           dam = obs.ADD$random[3,2],
+                           dam.sire = obs.ADD$random[1,2],
                            block = obs.ADD$random[4,2],
-                           residual = obs.ADD$other[1,2],
-                           additive = obs.ADD$calculation[1,2],
-                           nonadd = obs.ADD$calculation[2,2],
-                           maternal = obs.ADD$calculation[3,2]) %>% 
-    mutate(pheno = additive + maternal + residual,
-           h2.obs = additive / pheno,
-           maternal.obs = maternal / pheno) %>% 
-    select(group, h2.obs, maternal.obs)
+                           residual.obs = obs.ADD$other[1,2],
+                           total = obs.ADD$other[2,2],
+                           additive.obs = obs.ADD$calculation[1,2],
+                           nonadd.obs = obs.ADD$calculation[2,2],
+                           maternal.obs = obs.ADD$calculation[3,2]) %>% 
+    mutate(pheno.obs = additive.obs + nonadd.obs + residual.obs + block,
+           h2.obs = additive.obs / pheno.obs) %>% 
+    ## Calculate variance percentages
+    mutate(residual.obs.perc = residual.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           additive.obs.perc = additive.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           nonadditive.obs.perc = nonadd.obs / sum(sire, dam, dam.sire, block, residual.obs),
+           maternal.obs.perc = maternal.obs / sum(sire, dam, dam.sire, block, residual.obs))
 }))
 
 
 #### CALCULATE THE BIAS-CORRECTED MEAN AND SE FROM BOOTSTRAPPED DISTRIBUTIONS  -------------------
 
 ## Embryo Survival
-heritability.survival.summary <- heritability.survival.boot %>% 
-  mutate(pheno = additive + maternal + residual,
-         h2.boot = additive / pheno,
-         maternal.boot = maternal / pheno) %>% 
-  left_join(heritability.survival.obs) %>% 
-  group_by(group) %>% 
-  summarize(h2.obs = median(h2.obs),
-            h2.boot.mean = mean(h2.boot),
-            h2.obs.bias = h2.obs - (h2.boot.mean-h2.obs),
-            h2.se = sd(h2.boot),
-            maternal.obs = median(maternal.obs),
-            maternal.boot.mean = mean(maternal.boot),
-            maternal.obs.bias = maternal.obs - (maternal.boot.mean-maternal.obs),
-            maternal.se = sd(maternal.boot)) %>% 
-  mutate(trait = "survival",
-         h2.obs.bias = ifelse(h2.obs.bias < 0, 0, h2.obs.bias)) %>% 
-  ## Round numeric columns
-  mutate_if(is.numeric, round, 2) %>% 
-  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5)),
-         temperature = substr(group, nchar(group)-3, nchar(group))) %>% 
-  select(group, population, temperature, everything())
+heritability.survival.boot <- heritability.survival.boot %>% 
+  ## Calculate phenotypic variance percentages
+  mutate(pheno2 = sire + dam + dam.sire + block + residual,
+         additive.perc = additive / pheno2,
+         nonadd.perc = nonadd / pheno2,
+         maternal.perc = maternal / pheno2)
+
+heritability.survival.summary.median <- heritability.survival.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = median(additive.perc),
+            nonadditive = median(nonadd.perc),
+            maternal = median(maternal.perc))%>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "survival") %>% 
+  select(population, trait, variance, median = value)
+
+heritability.survival.summary.se <- heritability.survival.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = sd(additive.perc),
+            nonadditive = sd(nonadd.perc),
+            maternal = sd(maternal.perc)) %>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "survival") %>% 
+  select(population, trait, variance, se = value)
+
+heritability.survival.summary.all <- left_join(heritability.survival.summary.median, heritability.survival.summary.se)
+
 
 ## DPF
-heritability.dpf.summary <- heritability.dpf.boot %>% 
-  mutate(pheno = additive + maternal + residual,
-         h2.boot = additive / pheno,
-         maternal.boot = maternal / pheno) %>% 
-  left_join(heritability.dpf.obs) %>% 
-  group_by(group) %>% 
-  summarize(h2.obs = median(h2.obs),
-            h2.boot.mean = mean(h2.boot),
-            h2.obs.bias = h2.obs - (h2.boot.mean-h2.obs),
-            h2.se = sd(h2.boot),
-            maternal.obs = median(maternal.obs),
-            maternal.boot.mean = mean(maternal.boot),
-            maternal.obs.bias = maternal.obs - (maternal.boot.mean-maternal.obs),
-            maternal.se = sd(maternal.boot)) %>% 
-  mutate(trait = "dpf",
-         h2.obs.bias = ifelse(h2.obs.bias < 0, 0, h2.obs.bias)) %>% 
-  ## Round numeric columns
-  mutate_if(is.numeric, round, 2) %>% 
-  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5)),
-         temperature = substr(group, nchar(group)-3, nchar(group))) %>% 
-  select(group, population, temperature, everything())
+heritability.dpf.boot <- heritability.dpf.boot %>% 
+  ## Calculate phenotypic variance percentages
+  mutate(pheno2 = sire + dam + dam.sire + block + residual,
+         additive.perc = additive / pheno2,
+         nonadd.perc = nonadd / pheno2,
+         maternal.perc = maternal / pheno2)
+
+heritability.dpf.summary.median <- heritability.dpf.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = median(additive.perc),
+            nonadditive = median(nonadd.perc),
+            maternal = median(maternal.perc))%>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "dpf") %>% 
+  select(population, trait, variance, median = value)
+
+heritability.dpf.summary.se <- heritability.dpf.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = sd(additive.perc),
+            nonadditive = sd(nonadd.perc),
+            maternal = sd(maternal.perc)) %>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "dpf") %>% 
+  select(population, trait, variance, se = value)
+
+heritability.dpf.summary.all <- left_join(heritability.dpf.summary.median, heritability.dpf.summary.se)
 
 ## ADD
-heritability.ADD.summary <- heritability.ADD.boot %>% 
-  mutate(pheno = additive + maternal + residual,
-         h2.boot = additive / pheno,
-         maternal.boot = maternal / pheno) %>% 
-  left_join(heritability.ADD.obs) %>% 
-  group_by(group) %>% 
-  summarize(h2.obs = median(h2.obs),
-            h2.boot.mean = mean(h2.boot),
-            h2.obs.bias = h2.obs - (h2.boot.mean-h2.obs),
-            h2.se = sd(h2.boot),
-            maternal.obs = median(maternal.obs),
-            maternal.boot.mean = mean(maternal.boot),
-            maternal.obs.bias = maternal.obs - (maternal.boot.mean-maternal.obs),
-            maternal.se = sd(maternal.boot)) %>% 
-  mutate(trait = "ADD",
-         h2.obs.bias = ifelse(h2.obs.bias < 0, 0, h2.obs.bias)) %>% 
-  ## Round numeric columns
-  mutate_if(is.numeric, round, 2) %>% 
-  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5)),
-         temperature = substr(group, nchar(group)-3, nchar(group))) %>% 
-  select(group, population, temperature, everything())
+heritability.ADD.boot <- heritability.ADD.boot %>% 
+  ## Calculate phenotypic variance percentages
+  mutate(pheno2 = sire + dam + dam.sire + block + residual,
+         additive.perc = additive / pheno2,
+         nonadd.perc = nonadd / pheno2,
+         maternal.perc = maternal / pheno2)
+
+heritability.ADD.summary.median <- heritability.ADD.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = median(additive.perc),
+            nonadditive = median(nonadd.perc),
+            maternal = median(maternal.perc))%>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "ADD") %>% 
+  select(population, trait, variance, median = value)
+
+heritability.ADD.summary.se <- heritability.ADD.boot %>% 
+  mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5))) %>% 
+  group_by(population) %>% 
+  summarize(additive = sd(additive.perc),
+            nonadditive = sd(nonadd.perc),
+            maternal = sd(maternal.perc)) %>% 
+  pivot_longer(2:4, "variance") %>% 
+  mutate(trait = "ADD") %>% 
+  select(population, trait, variance, se = value)
+
+heritability.ADD.summary.all <- left_join(heritability.ADD.summary.median, heritability.ADD.summary.se)
 
 
 #### CREATE DATA FRAME WITH TEMPERATURE TREATMENTS -----------------------------------------------
@@ -381,22 +424,47 @@ temp <- data.frame(group = c("LK_Whitefish_8_0C", "LK_Whitefish_6_9C", "LK_White
 
 #### COMBINE ALL TRAITS --------------------------------------------------------------------------
 
-heritability.all <- bind_rows(heritability.survival.summary, heritability.ADD.summary, heritability.dpf.summary) %>% 
-  left_join(temp) %>% 
+heritability.all <- bind_rows(heritability.survival.summary.all, heritability.dpf.summary.all, heritability.ADD.summary.all) %>% 
   mutate(trait = factor(trait, ordered = TRUE, levels = c("survival", "dpf", "ADD"), labels = c("ES", "DPF", "ADD")),
-         temp.treatment = factor(temp.treatment, ordered = TRUE, levels = c("2.0°C", "4.5°C", "7.0°C", "9.0°C")),
          population = factor(population, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
-         h2.obs.bias = ifelse(h2.obs.bias > 1, 1, h2.obs.bias)) %>% 
+         median = ifelse(median > 1, 1, median)) %>% 
   filter(population != "LK-Whitefish")
 
 
 #### VISUALIZATION - HERITABILITY ----------------------------------------------------------------
 
-## Heritability
-plot.h2.es <- ggplot(filter(heritability.all, trait == "ES"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+ggplot(heritability.all, aes(x = population, y = median * 100, group = variance, fill = variance)) + 
+  stat_summary(fun = mean, geom = "bar", position = position_dodge(width = 0.9), size = 0.5, color = "black") +
+  geom_errorbar(aes(ymin = ifelse((median - se) * 100 < 0, 0, (median - se) * 100), 
+                    ymax = ifelse((median + se) * 100 > 100, 100, (median + se) * 100)), 
+                position = position_dodge(0.9),
+                size = 1.0, width = 0.25, linetype = "solid", show.legend = FALSE) +
+  #scale_fill_grey("combine", start = 0.2, end = 0.9,
+  #                labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10), expand = c(0, 0)) +
+  scale_x_discrete(expand = c(0, 0.5)) +
+  labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
+  theme_bw() + 
+  theme(axis.title.x = element_text(color = "Black", size = 24, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 24, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.ticks.length = unit(1.5, "mm"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 22),
+        legend.key.size = unit(1.0, 'cm'),
+        legend.position = "top",
+        strip.text = element_text(size = 18),
+        plot.margin = unit(c(5, 5, 5, 5), 'mm')) + 
+  facet_wrap(~trait, nrow = 3)
+
+ggsave("figures/2020-Embryo-Heritability-SE.png", width = 20, height = 12, dpi = 300)
+
+
+plot.es <- ggplot(filter(heritability.all, trait == "ES"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "A", x = 1.0, y = 46, size = 7) +
+  annotate("text", label = "A", x = 1.0, y = 65, size = 7) +
   geom_errorbar(aes(ymin = ifelse((h2.obs.bias - h2.se) * 100 < 0, 0, (h2.obs.bias - h2.se) * 100), 
                     ymax = ifelse((h2.obs.bias + h2.se) * 100 > 100, 100, (h2.obs.bias + h2.se) * 100)), 
                 position = position_dodge(0.13),
@@ -413,7 +481,7 @@ plot.h2.es <- ggplot(filter(heritability.all, trait == "ES"), aes(x = temp.treat
   #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 50), breaks = seq(0, 70, 10), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 70, 10), expand = c(0, 0)) +
   scale_x_discrete(expand = c(0, 0.1)) +
   labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
   theme_bw() +
@@ -428,10 +496,10 @@ plot.h2.es <- ggplot(filter(heritability.all, trait == "ES"), aes(x = temp.treat
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
 
-plot.h2.dpf <- ggplot(filter(heritability.all, trait == "DPF"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+plot.dpf <- ggplot(filter(heritability.all, trait == "DPF"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "B", x = 1.0, y = 46, size = 7) +
+  annotate("text", label = "B", x = 1.0, y = 65, size = 7) +
   geom_errorbar(aes(ymin = ifelse((h2.obs.bias - h2.se) * 100 < 0, 0, (h2.obs.bias - h2.se) * 100), 
                     ymax = ifelse((h2.obs.bias + h2.se) * 100 > 100, 100, (h2.obs.bias + h2.se) * 100)), 
                 position = position_dodge(0.13),
@@ -448,7 +516,7 @@ plot.h2.dpf <- ggplot(filter(heritability.all, trait == "DPF"), aes(x = temp.tre
   #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 50), breaks = seq(0, 70, 10), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 70, 10), expand = c(0, 0)) +
   scale_x_discrete(expand = c(0, 0.1)) +
   labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
   theme_bw() +
@@ -462,10 +530,10 @@ plot.h2.dpf <- ggplot(filter(heritability.all, trait == "DPF"), aes(x = temp.tre
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
-plot.h2.add <- ggplot(filter(heritability.all, trait == "ADD"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+plot.add <- ggplot(filter(heritability.all, trait == "ADD"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "C", x = 1.0, y = 46, size = 7) +
+  annotate("text", label = "C", x = 1.0, y = 65, size = 7) +
   geom_errorbar(aes(ymin = ifelse((h2.obs.bias - h2.se) * 100 < 0, 0, (h2.obs.bias - h2.se) * 100), 
                     ymax = ifelse((h2.obs.bias + h2.se) * 100 > 100, 100, (h2.obs.bias + h2.se) * 100)), 
                 position = position_dodge(0.13),
@@ -482,7 +550,7 @@ plot.h2.add <- ggplot(filter(heritability.all, trait == "ADD"), aes(x = temp.tre
                         #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 50), breaks = seq(0, 70, 10), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 70, 10), expand = c(0, 0)) +
   scale_x_discrete(expand = c(0, 0.1)) +
   labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
   theme_bw() +
@@ -497,139 +565,18 @@ plot.h2.add <- ggplot(filter(heritability.all, trait == "ADD"), aes(x = temp.tre
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
 ## Combine all figures
-plot.h2.all <- grid.arrange(arrangeGrob(textGrob(""), 
-                                     get_legend(plot.h2.es),
+plot.all <- grid.arrange(arrangeGrob(textGrob(""), 
+                                     get_legend(plot.es),
                                      nrow = 1,
                                      widths = c(0.09, 1)),
-                         arrangeGrob(plot.h2.es + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
-                                     plot.h2.dpf + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
-                                     plot.h2.add + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
+                         arrangeGrob(plot.es + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
+                                     plot.dpf + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
+                                     plot.add + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
                                      nrow = 3,
                                      left = textGrob("Narrow-sense Heritability (%)", y = 0.52, rot = 90, gp = gpar(cex = 1.75, fontfamily = "Arial")),
                                      bottom = textGrob("Incubation Temperature Treatment (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
                          heights = c(0.025, 1)
 )
 
-ggsave("figures/2020-Embryo-Heritability-SE-Line.png", plot = plot.h2.all, width = 11, height = 15, dpi = 300)
-
-
-## Maternal Effects
-plot.m2.es <- ggplot(filter(heritability.all, trait == "ES"), aes(x = temp.treatment, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "A", x = 1.0, y = 55, size = 7) +
-  geom_errorbar(aes(ymin = ifelse((maternal.obs.bias - maternal.se) * 100 < 0, 0, (maternal.obs.bias - maternal.se) * 100), 
-                    ymax = ifelse((maternal.obs.bias + maternal.se) * 100 > 100, 100, (maternal.obs.bias + maternal.se) * 100)), 
-                position = position_dodge(0.13),
-                size = 1.0, width = 0.25, linetype = "solid", show.legend = FALSE) +
-  #scale_color_manual("combine", values = c("#000000", "#717171" ,"#9f9e9f", "#c6c5c6"),
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_color_manual("combine", values = c("#000000","#9f9e9f", "#c6c5c6"),
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_shape_manual("combine", values = c(2, 1, 0), 
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 60), breaks = seq(0, 70, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
-  labs(x = "Incubation Temperature (°C)", y = "Maternal Effect (%)") +
-  theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
-        legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
-
-
-plot.m2.dpf <- ggplot(filter(heritability.all, trait == "DPF"), aes(x = temp.treatment, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "B", x = 1.0, y = 55, size = 7) +
-  geom_errorbar(aes(ymin = ifelse((maternal.obs.bias - maternal.se) * 100 < 0, 0, (maternal.obs.bias - maternal.se) * 100), 
-                    ymax = ifelse((maternal.obs.bias + maternal.se) * 100 > 100, 100, (maternal.obs.bias + maternal.se) * 100)), 
-                position = position_dodge(0.13),
-                size = 1.0, width = 0.25, linetype = "solid", show.legend = FALSE) +
-  #scale_color_manual("combine", values = c("#000000", "#717171" ,"#9f9e9f", "#c6c5c6"),
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_color_manual("combine", values = c("#000000","#9f9e9f", "#c6c5c6"),
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_shape_manual("combine", values = c(2, 1, 0), 
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 60), breaks = seq(0, 70, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
-  labs(x = "Incubation Temperature (°C)", y = "Maternal Effect (%)") +
-  theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
-        legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
-
-plot.m2.add <- ggplot(filter(heritability.all, trait == "ADD"), aes(x = temp.treatment, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "C", x = 1.0, y = 55, size = 7) +
-  geom_errorbar(aes(ymin = ifelse((maternal.obs.bias - maternal.se) * 100 < 0, 0, (maternal.obs.bias - maternal.se) * 100), 
-                    ymax = ifelse((maternal.obs.bias + maternal.se) * 100 > 100, 100, (maternal.obs.bias + maternal.se) * 100)), 
-                position = position_dodge(0.13),
-                size = 1.0, width = 0.25, linetype = "solid", show.legend = FALSE) +
-  #scale_color_manual("combine", values = c("#000000", "#717171" ,"#9f9e9f", "#c6c5c6"),
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_color_manual("combine", values = c("#000000","#9f9e9f", "#c6c5c6"),
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_shape_manual("combine", values = c(2, 1, 0), 
-                     labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  #scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-  #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 60), breaks = seq(0, 70, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
-  labs(x = "Incubation Temperature (°C)", y = "Maternal Effect (%)") +
-  theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
-        legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
-
-## Combine all figures
-plot.m2.all <- grid.arrange(arrangeGrob(textGrob(""), 
-                                     get_legend(plot.m2.es),
-                                     nrow = 1,
-                                     widths = c(0.09, 1)),
-                         arrangeGrob(plot.m2.es + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
-                                     plot.m2.dpf + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
-                                     plot.m2.add + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
-                                     nrow = 3,
-                                     left = textGrob("Maternal Effect (%)", y = 0.52, rot = 90, gp = gpar(cex = 1.75, fontfamily = "Arial")),
-                                     bottom = textGrob("Incubation Temperature Treatment (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
-                         heights = c(0.025, 1)
-)
-
-ggsave("figures/2020-Embryo-Maternal-SE-Line.png", plot = plot.m2.all, width = 11, height = 15, dpi = 300)
+ggsave("figures/2020-Embryo-Heritability-SE-Line.png", plot = plot.all, width = 11, height = 15, dpi = 300)
 
