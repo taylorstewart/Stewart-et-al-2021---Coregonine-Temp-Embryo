@@ -8,10 +8,14 @@ library(magrittr)
 library(ggplot2)
 
 # Load embryo diameter data -----------------------------------------------
-data <- read_excel("data/2020-Artedi-Temperature-Experiment-EmbryoMeasurements.xlsx", sheet = "Data") %>% 
+data <- read_excel("data/Coregonine-Temperature-Experiment-EmbryoMeasurements.xlsx", sheet = "Data") %>% 
   mutate(female = factor(female)) %>% 
   filter(fert_success == "y")
 
+
+data.summary <- data %>% group_by(population) %>% 
+  summarize(mean.diam = mean(dia_mm),
+            sd.diam = sd(dia_mm))
 
 # Visualizations ----------------------------------------------------------
 ggplot(data, aes(x = population, y = dia_mm, fill = population)) +
@@ -21,7 +25,7 @@ ggplot(data, aes(x = population, y = dia_mm, fill = population)) +
   scale_x_discrete(labels = c("Ontario", "Superior")) +
   scale_fill_manual(labels = c("Ontario    ", "Superior"), 
                     values = c("#a6cee3", "#1f78b4")) +
-  labs(x = "", y = "Embryo Diameter (mm)") +
+  labs(x = "", y = "Egg Diameter (mm)") +
   theme_classic() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_text(color = "Black", size = 20, margin = margin(0, 10, 0, 0)),
