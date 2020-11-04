@@ -1,11 +1,12 @@
-North American Global Coregonine Latitude
+North America a Coregonine Latitude
 ==========
 
-This repository contains data files, analysis scripts, and fertilization and microplate pictures for the North American portion of *Influence of changing lake temperatures on early life stages of freshwater whitefishes at local to global scales*.
+This repository contains data files, analysis scripts, and manuscript for the Great Lakes and Finland portions of *Influence of changing lake temperatures on early life stages of freshwater whitefishes at local to global scales*.
 
 
 # Data files (not in the repo)
-* `data/LakeOntario-Cisco-2019.xlsx` -- Excel file containing the biological data specific to a pilot project conducted in 2018-19.
+* `data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx` -- Excel file containing the embryo biological data from the Great Lakes.  
+* `data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx` -- Excel file containing the embryo biological data from Finland.
 
 
 # Scripts
