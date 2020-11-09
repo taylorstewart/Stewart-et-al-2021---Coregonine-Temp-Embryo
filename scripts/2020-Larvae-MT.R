@@ -141,13 +141,15 @@ rand(larval.yolk.fi.glm.final)
 larval.tl.summary <- larval %>% filter(!is.na(length_mm)) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.tl = mean(length_mm),
-            se.tl = sd(length_mm)/sqrt(n()))
+            se.tl = sd(length_mm)/sqrt(n()),
+            n = n())
 
 ## Yolk-sac Volume
 larval.yolk.summary <- larval %>% filter(!is.na(y_vol_mm3)) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.yolk = mean(y_vol_mm3),
-            se.yolk = sd(y_vol_mm3)/sqrt(n()))
+            se.yolk = sd(y_vol_mm3)/sqrt(n()),
+            n = n())
 
 
 #### VISUALIZATIONS ----------------------------------------------------------
