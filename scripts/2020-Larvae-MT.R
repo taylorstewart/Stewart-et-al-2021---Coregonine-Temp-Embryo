@@ -40,13 +40,13 @@ larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>%
 
 #### FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------
 
-larval.tl.na <- larval %>% filter(!is.na(length_mm), group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+larval.tl.na <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-larval.tl.fi <- larval %>% filter(!is.na(length_mm), group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+larval.tl.fi <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
-larval.yolk.na <- larval %>% filter(!is.na(y_vol_mm3), group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+larval.yolk.na <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-larval.yolk.fi <- larval %>% filter(!is.na(y_vol_mm3), group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+larval.yolk.fi <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 ## Clean up environment
@@ -138,14 +138,14 @@ rand(larval.yolk.fi.glm.final)
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
 
 ## Length-at-Hatch
-larval.tl.summary <- larval %>% filter(!is.na(length_mm)) %>% 
+larval.tl.summary <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.tl = mean(length_mm),
             se.tl = sd(length_mm)/sqrt(n()),
             n = n())
 
 ## Yolk-sac Volume
-larval.yolk.summary <- larval %>% filter(!is.na(y_vol_mm3)) %>% 
+larval.yolk.summary <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.yolk = mean(y_vol_mm3),
             se.yolk = sd(y_vol_mm3)/sqrt(n()),
