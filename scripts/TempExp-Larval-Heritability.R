@@ -16,6 +16,10 @@ library(data.table)
 library(ggplot2)
 library(fullfact)
 library(parallel)
+library(gridExtra)
+library(grid)
+library(cowplot)
+
 
 setDTthreads(threads = 0)  # 0 = all available
 
@@ -51,10 +55,10 @@ rm(larval.lo, larval.ls, larval.lk)
 # FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------
 
 ## filter out missing lengths
-larval.tl <- larval %>% filter(!is.na(length_mm))
+larval.tl <- larval %>% filter(!is.na(length_mm), length_mm != 0)
 
 ## filter out missing yolks
-larval.yolk <- larval %>% filter(!is.na(y_vol_mm3))
+larval.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0)
 
 
 # STATISTICAL ANALYSIS - LAH - HERITABILITY ---------------------------------------------------
@@ -113,6 +117,7 @@ end - start
 ## Run loop to calculate genetic variances for each temperature and population
 start <- Sys.time()
 if(file.exists("data/Heritability_Bootstrap/Heritability_YSV_var_boot.csv") == FALSE) {
+
   heritability.yolk.boot <- do.call(rbind, mclapply(unique(larval.yolk$group), mc.cores = detectCores(), function(grp) {
     ## Filter to only a single temperature treatment
     data.group <- larval.yolk %>% filter(group == grp) %>% 
@@ -140,6 +145,8 @@ if(file.exists("data/Heritability_Bootstrap/Heritability_YSV_var_boot.csv") == F
     ## Save bootstrapped fish data
     write.csv(bootstrap.data, paste0("data/Heritability_Bootstrap/YSV/Heritability_YSV_Boot_Fish_", grp ,".csv"), row.names = FALSE)
     
+    bootstrap.data <- fread(grp)
+    
     ## Calculate variance components from bootstrapped sample
     bootstrap.data.glmer2 <- resampLmer2(resamp = bootstrap.data, dam = "dam", sire = "sire", response = "yolk",
                                          block = "block", start = 1, end = 10000)
@@ -150,7 +157,7 @@ if(file.exists("data/Heritability_Bootstrap/Heritability_YSV_var_boot.csv") == F
   }))
   
   ## Save variances for future use
-  write.csv(heritability.yolk.boot, "data/Heritability_Bootstrap/Heritability_YSV_Var_Boot.csv", row.names = FALSE)
+  write.csv(heritability.yolk.boot2, "data/Heritability_Bootstrap/Heritability_YSV_Var_Boot.csv", row.names = FALSE)
 } else {
   heritability.yolk.boot <- fread("data/Heritability_Bootstrap/Heritability_YSV_Var_Boot.csv")
 }
@@ -224,7 +231,9 @@ heritability.tl.summary <- heritability.tl.boot %>%
   ## Round numeric columns
   mutate_if(is.numeric, round, 2) %>% 
   mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5)),
-         temperature = substr(group, nchar(group)-3, nchar(group))) %>% 
+         temperature = substr(group, nchar(group)-3, nchar(group)),
+         temperature = gsub("_", ".", temperature),
+         temperature = as.numeric(gsub("C", "", temperature))) %>% 
   select(group, population, temperature, everything())
 
 ## Yolk-sac Volume
@@ -247,7 +256,9 @@ heritability.yolk.summary <- heritability.yolk.boot %>%
   ## Round numeric columns
   mutate_if(is.numeric, round, 2) %>% 
   mutate(population = gsub("_", "-", substr(group, 1, nchar(group)-5)),
-         temperature = substr(group, nchar(group)-3, nchar(group))) %>% 
+         temperature = substr(group, nchar(group)-3, nchar(group)),
+         temperature = gsub("_", ".", temperature),
+         temperature = as.numeric(gsub("C", "", temperature))) %>% 
   select(group, population, temperature, everything())
 
 
@@ -276,10 +287,10 @@ heritability.all <- bind_rows(heritability.tl.summary, heritability.yolk.summary
 #### VISUALIZATION - HERITABILITY --------------------------------------------
 
 ## Heritability
-plot.h2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+plot.h2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temperature, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "A", x = 1.0, y = 65, size = 7) +
+  annotate("text", label = "A", x = 2.0, y = 65, size = 7) +
   geom_errorbar(aes(ymin = ifelse((h2.obs.bias - h2.se) * 100 < 0, 0, (h2.obs.bias - h2.se) * 100), 
                     ymax = ifelse((h2.obs.bias + h2.se) * 100 > 100, 100, (h2.obs.bias + h2.se) * 100)), 
                 position = position_dodge(0.13),
@@ -297,7 +308,7 @@ plot.h2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.tre
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 100, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
+  scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
@@ -311,10 +322,10 @@ plot.h2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.tre
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
 
-plot.h2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temp.treatment, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+plot.h2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temperature, y = (h2.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "B", x = 1.0, y = 65, size = 7) +
+  annotate("text", label = "B", x = 2.0, y = 46, size = 7) +
   geom_errorbar(aes(ymin = ifelse((h2.obs.bias - h2.se) * 100 < 0, 0, (h2.obs.bias - h2.se) * 100), 
                     ymax = ifelse((h2.obs.bias + h2.se) * 100 > 100, 100, (h2.obs.bias + h2.se) * 100)), 
                 position = position_dodge(0.13),
@@ -331,8 +342,8 @@ plot.h2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temp.tre
   #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 100, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
+  scale_y_continuous(limits = c(-2, 50), breaks = seq(0, 100, 10), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   labs(x = "Incubation Temperature (°C)", y = "Narrow-sense Heritability (%)") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
@@ -354,17 +365,17 @@ plot.h2.all <- grid.arrange(arrangeGrob(textGrob(""),
                                      plot.h2.ysv + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
                                      nrow = 2,
                                      left = textGrob("Narrow-sense Heritability (%)", y = 0.52, rot = 90, gp = gpar(cex = 1.75, fontfamily = "Arial")),
-                                     bottom = textGrob("Incubation Temperature Treatment (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
+                                     bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
                          heights = c(0.025, 1)
 )
 
 ggsave("figures/2020-Larval-Heritability-SE-Line.png", plot = plot.h2.all, width = 11, height = 10, dpi = 300)
 
-## Heritability
-plot.m2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.treatment, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+ ## Heritability
+plot.m2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temperature, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "A", x = 1.0, y = 70, size = 7) +
+  annotate("text", label = "A", x = 2.0, y = 95, size = 7) +
   geom_errorbar(aes(ymin = ifelse((maternal.obs.bias - maternal.se) * 100 < 0, 0, (maternal.obs.bias - maternal.se) * 100), 
                     ymax = ifelse((maternal.obs.bias + maternal.se) * 100 > 100, 100, (maternal.obs.bias + maternal.se) * 100)), 
                 position = position_dodge(0.13),
@@ -381,8 +392,8 @@ plot.m2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.tre
   #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 75), breaks = seq(0, 100, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
+  scale_y_continuous(limits = c(-2, 102), breaks = seq(0, 100, 20), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   labs(x = "Incubation Temperature (°C)", y = "Maternal Effect (%)") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
@@ -396,10 +407,10 @@ plot.m2.lah <- ggplot(filter(heritability.all, trait == "LAH"), aes(x = temp.tre
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
 
-plot.m2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temp.treatment, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
+plot.m2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temperature, y = (maternal.obs.bias * 100), group = population, color = population, shape = population, linetype = population)) + 
   geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
-  annotate("text", label = "B", x = 1.0, y = 70, size = 7) +
+  annotate("text", label = "B", x = 2.0, y = 65, size = 7) +
   geom_errorbar(aes(ymin = ifelse((maternal.obs.bias - maternal.se) * 100 < 0, 0, (maternal.obs.bias - maternal.se) * 100), 
                     ymax = ifelse((maternal.obs.bias + maternal.se) * 100 > 100, 100, (maternal.obs.bias + maternal.se) * 100)), 
                 position = position_dodge(0.13),
@@ -416,8 +427,8 @@ plot.m2.ysv <- ggplot(filter(heritability.all, trait == "YSV"), aes(x = temp.tre
   #labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LS-Cisco   ", "LO-Cisco")) +
-  scale_y_continuous(limits = c(-2, 75), breaks = seq(0, 100, 10), expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0, 0.1)) +
+  scale_y_continuous(limits = c(-2, 70), breaks = seq(0, 100, 10), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   labs(x = "Incubation Temperature (°C)", y = "Maternal Effect (%)") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
@@ -439,7 +450,7 @@ plot.m2.all <- grid.arrange(arrangeGrob(textGrob(""),
                                         plot.m2.ysv + theme(legend.position = "none", axis.title.x = element_blank(), axis.title.y = element_blank()),
                                         nrow = 2,
                                         left = textGrob("Maternal Effect (%)", y = 0.52, rot = 90, gp = gpar(cex = 1.75, fontfamily = "Arial")),
-                                        bottom = textGrob("Incubation Temperature Treatment (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
+                                        bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
                             heights = c(0.025, 1)
 )
 
