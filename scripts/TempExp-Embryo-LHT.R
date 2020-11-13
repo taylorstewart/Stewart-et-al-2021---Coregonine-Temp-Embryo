@@ -19,7 +19,7 @@ library(cowplot)
 
 #### LOAD INCUBATION TEMPERATURE DATA ----------------------------------------
 
-ADD <- read.csv("data/2020-Artedi-ADD.csv", header = TRUE) %>% 
+ADD <- read.csv("data/Artedi-Temperature-ADD-2020.csv", header = TRUE) %>% 
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
@@ -61,164 +61,238 @@ rm(hatch.NA, hatch.FI, ADD)
 #### FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------
 
 ## filter to only eyed embryos
-hatch.survival.na <- hatch %>% filter(eye != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+hatch.survival.cisco <- hatch %>% filter(eye != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.survival.fi <- hatch %>% filter(eye != 0, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+hatch.survival.vendace <- hatch %>% filter(eye != 0, group == "LK-Vendace") %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+hatch.survival.whitefish <- hatch %>% filter(eye != 0, group == "LK-Whitefish") %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 ## filter to only hatched embryos
-hatch.dpf.na <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+hatch.dpf.cisco <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.dpf.fi <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+hatch.dpf.vendace <- hatch %>% filter(!is.na(dpf), hatch == 1, group == "LK-Vendace") %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+hatch.dpf.whitefish <- hatch %>% filter(!is.na(dpf), hatch == 1, group == "LK-Whitefish") %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 ## filter to only hatched embryos
-hatch.ADD.na <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco"))%>% 
+hatch.ADD.cisco <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco"))%>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.ADD.fi <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+hatch.ADD.vendace <- hatch %>% filter(!is.na(ADD), hatch == 1, group == "LK-Vendace") %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+hatch.ADD.whitefish <- hatch %>% filter(!is.na(ADD), hatch == 1, group == "LK-Whitefish") %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 
-#### STATISTICAL ANALYSIS - SURVIVAL - NA ------------------------------------
+# STATISTICAL ANALYSIS - SURVIVAL - CISCO -----------------------------------------------------
 
 ## backward elimination to select best model
-hatch.survival.na.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
+hatch.survival.cisco.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
                                     (1|family) + (1|male) + (1|female) + (1|block), 
-                                  direction = 'backward', data = hatch.survival.na, 
+                                  direction = 'backward', data = hatch.survival.cisco, 
                                   family = binomial, control = glmerControl(optimizer = "bobyqa"))
-( hatch.survival.na.glm.formula <- formula(hatch.survival.na.glm@model))
+( hatch.survival.cisco.glm.formula <- formula(hatch.survival.cisco.glm@model))
 
 ## fit best model
-hatch.survival.na.glm.final <- glmer(hatch.survival.na.glm.formula, data = hatch.survival.na, 
-                                     family = binomial, control = glmerControl(optimizer = "bobyqa"))
+hatch.survival.cisco.glm.final <- glmer(hatch.survival.cisco.glm.formula, data = hatch.survival.cisco, 
+                                        family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## likelihood ratio test for fixed effects
-mixed(hatch.survival.na.glm.formula, data = hatch.survival.na, method = "LRT")
+mixed(hatch.survival.cisco.glm.formula, data = hatch.survival.cisco, method = "LRT")
 
 ## fit model without random effects for LRT
 # family
-hatch.survival.na.glm.family <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
-                                        (1 | female), data = hatch.survival.na, 
+hatch.survival.cisco.glm.family <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
+                                        (1 | female), data = hatch.survival.cisco, 
                                       family = binomial, control = glmerControl(optimizer = "bobyqa"))
 # female
-hatch.survival.na.glm.female <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
-                                        (1 | family), data = hatch.survival.na, 
+hatch.survival.cisco.glm.female <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
+                                        (1 | family), data = hatch.survival.cisco, 
                                       family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## Compare full to reduced models (LRT)
 # family
-anova(hatch.survival.na.glm.family, hatch.survival.na.glm.final)
+anova(hatch.survival.cisco.glm.family, hatch.survival.cisco.glm.final)
 # female
-anova(hatch.survival.na.glm.female, hatch.survival.na.glm.final)
+anova(hatch.survival.cisco.glm.female, hatch.survival.cisco.glm.final)
 
 
-#### STATISTICAL ANALYSIS - SURVIVAL - FI ------------------------------------
+#### STATISTICAL ANALYSIS - SURVIVAL - VENDACE ---------------------------------------------------
 
 ## backward elimination to select best model
-hatch.survival.fi.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
-                                    (1|family) + (1|male) + (1|female) + (1|block), 
-                                  direction = 'backward', data = hatch.survival.fi, 
-                                  family = binomial, control = glmerControl(optimizer = "bobyqa"))
-( hatch.survival.fi.glm.formula <- formula(hatch.survival.fi.glm@model))
+hatch.survival.vendace.glm <- buildmer(hatch ~ temperature +
+                                         (1|family) + (1|male) + (1|female) + (1|block), 
+                                       direction = 'backward', data = hatch.survival.vendace, 
+                                       family = binomial, control = glmerControl(optimizer = "bobyqa"))
+( hatch.survival.vendace.glm.formula <- formula(hatch.survival.vendace.glm@model))
 
 ## fit best model
-hatch.survival.fi.glm.final <- glmer(hatch.survival.fi.glm.formula, data = hatch.survival.fi, 
-                                     family = binomial, control = glmerControl(optimizer = "bobyqa"))
+hatch.survival.vendace.glm.final <- glmer(hatch.survival.vendace.glm.formula, data = hatch.survival.vendace, 
+                                          family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## likelihood ratio test for fixed effects
-mixed(hatch.survival.fi.glm.formula, data = hatch.survival.fi, method = "LRT")
+mixed(hatch.survival.vendace.glm.formula, data = hatch.survival.vendace, method = "LRT")
 
 ## fit model without random effects for LRT
 # family
-hatch.survival.fi.glm.family <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
-                                       (1 | female), data = hatch.survival.fi, 
-                                     family = binomial, control = glmerControl(optimizer = "bobyqa"))
+hatch.survival.vendace.glm.family <- glmer(hatch ~ 1 + temperature + (1 | female), data = hatch.survival.vendace, 
+                                           family = binomial, control = glmerControl(optimizer = "bobyqa"))
 # female
-hatch.survival.fi.glm.female <- glmer(hatch ~ 1 + temperature + group + temperature:group + 
-                                        (1 | family), data = hatch.survival.fi, 
-                                      family = binomial, control = glmerControl(optimizer = "bobyqa"))
+hatch.survival.vendace.glm.female <- glmer(hatch ~ 1 + temperature + (1 | family), data = hatch.survival.vendace, 
+                                           family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## Compare full to reduced models (LRT)
 # family
-anova(hatch.survival.fi.glm.family, hatch.survival.fi.glm.final)
+anova(hatch.survival.vendace.glm.family, hatch.survival.vendace.glm.final)
 # female
-anova(hatch.survival.fi.glm.female, hatch.survival.fi.glm.final)
+anova(hatch.survival.vendace.glm.female, hatch.survival.vendace.glm.final)
 
 
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - NA ---------------------
-
-## fit full model
-hatch.dpf.na.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = hatch.dpf.na)
+#### STATISTICAL ANALYSIS - SURVIVAL - WHITEFISH -------------------------------------------------
 
 ## backward elimination to select best model
-hatch.dpf.na.glm <- step(hatch.dpf.na.glm.full)
-( hatch.dpf.na.glm.formula <- get_model(hatch.dpf.na.glm)@call[["formula"]])
+hatch.survival.whitefish.glm <- buildmer(hatch ~ temperature +
+                                         (1|family) + (1|male) + (1|female) + (1|block), 
+                                       direction = 'backward', data = hatch.survival.whitefish, 
+                                       family = binomial, control = glmerControl(optimizer = "bobyqa"))
+( hatch.survival.whitefish.glm.formula <- formula(hatch.survival.whitefish.glm@model))
 
 ## fit best model
-hatch.dpf.na.glm.final <- lmer(hatch.dpf.na.glm.formula, data = hatch.dpf.na)
+hatch.survival.whitefish.glm.final <- glmer(hatch.survival.whitefish.glm.formula, data = hatch.survival.whitefish,
+                                            family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
-## likelihood ratio test for fixed and random effects
-mixed(hatch.dpf.na.glm.formula, data = hatch.dpf.na, method = "LRT")
-rand(hatch.dpf.na.glm.final)
+## likelihood ratio test for fixed effects
+mixed(hatch.survival.whitefish.glm.formula, data = hatch.survival.whitefish, method = "LRT")
+
+## fit model without random effects for LRT
+# family
+hatch.survival.whitefish.glm.family <- glmer(hatch ~ 1 + temperature + (1 | female) + (1 | male), data = hatch.survival.whitefish, 
+                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
+# female
+hatch.survival.whitefish.glm.female <- glmer(hatch ~ 1 + temperature + (1 | family) + (1 | male), data = hatch.survival.whitefish, 
+                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
+# male
+hatch.survival.whitefish.glm.male <- glmer(hatch ~ 1 + temperature + (1 | family) + (1 | female), data = hatch.survival.whitefish, 
+                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
+
+## Compare full to reduced models (LRT)
+# family
+anova(hatch.survival.whitefish.glm.family, hatch.survival.whitefish.glm.final)
+# female
+anova(hatch.survival.whitefish.glm.female, hatch.survival.whitefish.glm.final)
+# male
+anova(hatch.survival.whitefish.glm.male, hatch.survival.whitefish.glm.final)
 
 
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - FI ---------------------
+# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - CISCO --------------------------------------
 
 ## fit full model
-hatch.dpf.fi.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = hatch.dpf.fi)
+hatch.dpf.cisco.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
+                                   (1|family) + (1|male) + (1|female) + (1|block), 
+                                 data = hatch.dpf.cisco)
 
 ## backward elimination to select best model
-hatch.dpf.fi.glm <- step(hatch.dpf.fi.glm.full)
-( hatch.dpf.fi.glm.formula <- get_model(hatch.dpf.fi.glm)@call[["formula"]])
+hatch.dpf.cisco.glm <- step(hatch.dpf.cisco.glm.full)
+( hatch.dpf.cisco.glm.formula <- get_model(hatch.dpf.cisco.glm)@call[["formula"]])
 
 ## fit best model
-hatch.dpf.fi.glm.final <- lmer(hatch.dpf.fi.glm.formula, data = hatch.dpf.fi)
+hatch.dpf.cisco.glm.final <- lmer(hatch.dpf.cisco.glm.formula, data = hatch.dpf.cisco)
 
 ## likelihood ratio test for fixed and random effects
-mixed(hatch.dpf.fi.glm.formula, data = hatch.dpf.fi, method = "LRT")
-rand(hatch.dpf.fi.glm.final)
+mixed(hatch.dpf.cisco.glm.formula, data = hatch.dpf.cisco, method = "LRT")
+rand(hatch.dpf.cisco.glm.final)
 
 
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - NA ---------------------
+# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - VENDACE ------------------------------------
 
 ## fit full model
-hatch.ADD.na.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = hatch.ADD.na)
+hatch.dpf.vendace.glm.full <- lmer(dpf ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                              data = hatch.dpf.vendace)
 
 ## backward elimination to select best model
-hatch.ADD.na.glm <- step(hatch.ADD.na.glm.full)
-( hatch.ADD.na.glm.formula <- get_model(hatch.ADD.na.glm)@call[["formula"]])
+hatch.dpf.vendace.glm <- step(hatch.dpf.vendace.glm.full)
+( hatch.dpf.vendace.glm.formula <- get_model(hatch.dpf.vendace.glm)@call[["formula"]])
 
 ## fit best model
-hatch.ADD.na.glm.final <- lmer(hatch.ADD.na.glm.formula, data = hatch.ADD.na)
+hatch.dpf.vendace.glm.final <- lmer(hatch.dpf.vendace.glm.formula, data = hatch.dpf.vendace)
 
 ## likelihood ratio test for fixed and random effects
-mixed(hatch.ADD.na.glm.formula, data = hatch.ADD.na, method = "LRT")
-rand(hatch.ADD.na.glm.final)
+mixed(hatch.dpf.vendace.glm.formula, data = hatch.dpf.vendace, method = "LRT")
+rand(hatch.dpf.vendace.glm.final)
 
 
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - FI ---------------------
+# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - WHITEFISH ----------------------------------
 
 ## fit full model
-hatch.ADD.fi.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = hatch.ADD.fi)
+hatch.dpf.whitefish.glm.full <- lmer(dpf ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                   data = hatch.dpf.whitefish)
 
 ## backward elimination to select best model
-hatch.ADD.fi.glm <- step(hatch.ADD.fi.glm.full)
-( hatch.ADD.fi.glm.formula <- get_model(hatch.ADD.fi.glm)@call[["formula"]])
+hatch.dpf.whitefish.glm <- step(hatch.dpf.whitefish.glm.full)
+( hatch.dpf.whitefish.glm.formula <- get_model(hatch.dpf.whitefish.glm)@call[["formula"]])
 
 ## fit best model
-hatch.ADD.fi.glm.final <- lmer(hatch.ADD.fi.glm.formula, data = hatch.ADD.fi)
+hatch.dpf.whitefish.glm.final <- lmer(hatch.dpf.whitefish.glm.formula, data = hatch.dpf.whitefish)
 
 ## likelihood ratio test for fixed and random effects
-mixed(hatch.ADD.fi.glm.formula, data = hatch.ADD.fi, method = "LRT")
-rand(hatch.ADD.fi.glm.final)
+mixed(hatch.dpf.whitefish.glm.formula, data = hatch.dpf.whitefish, method = "LRT")
+rand(hatch.dpf.whitefish.glm.final)
+
+
+# STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
+
+## fit full model
+hatch.ADD.cisco.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
+                                (1|family) + (1|male) + (1|female) + (1|block), 
+                              data = hatch.ADD.cisco)
+
+## backward elimination to select best model
+hatch.ADD.cisco.glm <- step(hatch.ADD.cisco.glm.full)
+( hatch.ADD.cisco.glm.formula <- get_model(hatch.ADD.cisco.glm)@call[["formula"]])
+
+## fit best model
+hatch.ADD.cisco.glm.final <- lmer(hatch.ADD.cisco.glm.formula, data = hatch.ADD.cisco)
+
+## likelihood ratio test for fixed and random effects
+mixed(hatch.ADD.cisco.glm.formula, data = hatch.ADD.cisco, method = "LRT")
+rand(hatch.ADD.cisco.glm.final)
+
+
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - VENDACE ------------------------------------
+
+## fit full model
+hatch.ADD.vendace.glm.full <- lmer(ADD ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                 data = hatch.ADD.vendace)
+
+## backward elimination to select best model
+hatch.ADD.vendace.glm <- step(hatch.ADD.vendace.glm.full)
+( hatch.ADD.vendace.glm.formula <- get_model(hatch.ADD.vendace.glm)@call[["formula"]])
+
+## fit best model
+hatch.ADD.vendace.glm.final <- lmer(hatch.ADD.vendace.glm.formula, data = hatch.ADD.vendace)
+
+## likelihood ratio test for fixed and random effects
+mixed(hatch.ADD.vendace.glm.formula, data = hatch.ADD.vendace, method = "LRT")
+rand(hatch.ADD.vendace.glm.final)
+
+
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - WHITEFISH ----------------------------------
+
+## fit full model
+hatch.ADD.whitefish.glm.full <- lmer(ADD ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                 data = hatch.ADD.whitefish)
+
+## backward elimination to select best model
+hatch.ADD.whitefish.glm <- step(hatch.ADD.whitefish.glm.full)
+( hatch.ADD.whitefish.glm.formula <- get_model(hatch.ADD.whitefish.glm)@call[["formula"]])
+
+## fit best model
+hatch.ADD.whitefish.glm.final <- lmer(hatch.ADD.whitefish.glm.formula, data = hatch.ADD.whitefish)
+
+## likelihood ratio test for fixed and random effects
+mixed(hatch.ADD.whitefish.glm.formula, data = hatch.ADD.whitefish, method = "LRT")
+rand(hatch.ADD.whitefish.glm.final)
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------

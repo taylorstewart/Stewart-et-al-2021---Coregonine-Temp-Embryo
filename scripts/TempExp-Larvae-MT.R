@@ -38,101 +38,147 @@ larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>%
                         labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
 
 
-#### FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------
+#### FILTER TO EACH SPECIES' DATASET --------------------------------------------------------------
 
-larval.tl.na <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+## filter to only length
+larval.cisco <- larval %>% filter(!is.na(length_mm), length_mm != 0, !is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-larval.tl.fi <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+larval.vendace <- larval %>% filter(!is.na(length_mm), length_mm != 0, !is.na(y_vol_mm3), y_vol_mm3 != 0, group == "LK-Vendace") %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
-larval.yolk.na <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-larval.yolk.fi <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LK-Vendace", "LK-Whitefish")) %>% 
+larval.whitefish <- larval %>% filter(!is.na(length_mm), length_mm != 0, !is.na(y_vol_mm3), y_vol_mm3 != 0, group == "LK-Whitefish") %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+
 
 ## Clean up environment
 rm(larval.lo, larval.ls, larval.lk)
 
 
-# STATISTICAL ANALYSIS - LENGTH-AT-HATCH - NA -------------------------------------------------
+#### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - CISCO ----------------------------------------------
 
 ## fit full model
-larval.tl.na.glm.full <- lmer(length_mm ~ 1 + temperature + group + temperature:group + 
+larval.tl.cisco.glm.full <- lmer(length_mm ~ 1 + temperature + group + temperature:group + 
                                 (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = larval.tl.na)
+                              data = larval.cisco)
 
 ## backward elimination to select best model
-larval.tl.na.glm <- step(larval.tl.na.glm.full)
-( larval.tl.na.glm.formula <- get_model(larval.tl.na.glm)@call[["formula"]])
+larval.tl.cisco.glm <- step(larval.tl.cisco.glm.full)
+( larval.tl.cisco.glm.formula <- get_model(larval.tl.cisco.glm)@call[["formula"]])
 
 ## fit best model
-larval.tl.na.glm.final <- lmer(larval.tl.na.glm.formula, data = larval.tl.na)
+larval.tl.cisco.glm.final <- lmer(larval.tl.cisco.glm.formula, data = larval.cisco)
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.tl.na.glm.formula, data = larval.tl.na, method = "LRT")
-rand(larval.tl.na.glm.final)
+mixed(larval.tl.cisco.glm.formula, data = larval.cisco, method = "LRT")
+rand(larval.tl.cisco.glm.final)
 
 ## Calculate estimated marginal means - be very patient!
-larval.tl.glm.emm <- emmeans(larval.tl.na.glm.final, ~ temperature | group)
+larval.tl.cisco.glm.emm <- emmeans(larval.tl.cisco.glm.final, ~ temperature | group)
 
 ## Pairwise
-pairs(larval.tl.glm.emm, simple = list("temperature", "group"), adjust = "tukey", type = "response") 
+pairs(larval.tl.cisco.glm.emm, simple = list("temperature", "group"), adjust = "tukey", type = "response") 
 
 
-# STATISTICAL ANALYSIS - LENGTH-AT-HATCH - FI -------------------------------------------------
+#### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - VENDACE --------------------------------------------
 
 ## fit full model
-larval.tl.fi.glm.full <- lmer(length_mm ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = larval.tl.fi)
+larval.tl.vendace.glm.full <- lmer(length_mm ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                 data = larval.vendace)
 
 ## backward elimination to select best model
-larval.tl.fi.glm <- step(larval.tl.fi.glm.full)
-( larval.tl.fi.glm.formula <- get_model(larval.tl.fi.glm)@call[["formula"]])
+larval.tl.vendace.glm <- step(larval.tl.vendace.glm.full)
+( larval.tl.vendace.glm.formula <- get_model(larval.tl.vendace.glm)@call[["formula"]])
 
 ## fit best model
-larval.tl.fi.glm.final <- lmer(larval.tl.fi.glm.formula, data = larval.tl.fi)
+larval.tl.vendace.glm.final <- lmer(larval.tl.vendace.glm.formula, data = larval.vendace)
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.tl.fi.glm.formula, data = larval.tl.fi, method = "LRT")
-rand(larval.tl.fi.glm.final)
+mixed(larval.tl.vendace.glm.formula, data = larval.vendace, method = "LRT")
+rand(larval.tl.vendace.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+larval.tl.vendace.glm.emm <- emmeans(larval.tl.vendace.glm.final, ~ temperature)
+
+## Pairwise
+pairs(larval.tl.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - NA -------------------------------------------------
+#### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - WHITEFISH ------------------------------------------
 
 ## fit full model
-larval.yolk.na.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + group + temperature:group + 
-                                (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = larval.yolk.na)
+larval.tl.whitefish.glm.full <- lmer(length_mm ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                   data = larval.whitefish)
 
 ## backward elimination to select best model
-larval.yolk.na.glm <- step(larval.yolk.na.glm.full)
-( larval.yolk.na.glm.formula <- get_model(larval.yolk.na.glm)@call[["formula"]])
+larval.tl.whitefish.glm <- step(larval.tl.whitefish.glm.full)
+( larval.tl.whitefish.glm.formula <- get_model(larval.tl.whitefish.glm)@call[["formula"]])
 
 ## fit best model
-larval.yolk.na.glm.final <- lmer(larval.yolk.na.glm.formula, data = larval.yolk.na)
+larval.tl.whitefish.glm.final <- lmer(larval.tl.whitefish.glm.formula, data = larval.whitefish)
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.yolk.na.glm.formula, data = larval.yolk.na, method = "LRT")
-rand(larval.yolk.na.glm.final)
+mixed(larval.tl.whitefish.glm.formula, data = larval.whitefish, method = "LRT")
+rand(larval.tl.whitefish.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+larval.tl.whitefish.glm.emm <- emmeans(larval.tl.whitefish.glm.final, ~ temperature)
+
+## Pairwise
+pairs(larval.tl.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - FI -------------------------------------------------
+# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - CISCO ----------------------------------------------
 
 ## fit full model
-larval.yolk.fi.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + group + temperature:group + 
+larval.yolk.cisco.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + group + temperature:group + 
                                   (1|family) + (1|male) + (1|female) + (1|block), 
-                                data = larval.yolk.fi)
+                                data = larval.cisco)
 
 ## backward elimination to select best model
-larval.yolk.fi.glm <- step(larval.yolk.fi.glm.full)
-( larval.yolk.fi.glm.formula <- get_model(larval.yolk.fi.glm)@call[["formula"]])
+larval.yolk.cisco.glm <- step(larval.yolk.cisco.glm.full)
+( larval.yolk.cisco.glm.formula <- get_model(larval.yolk.cisco.glm)@call[["formula"]])
 
 ## fit best model
-larval.yolk.fi.glm.final <- lmer(larval.yolk.fi.glm.formula, data = larval.yolk.fi)
+larval.yolk.cisco.glm.final <- lmer(larval.yolk.cisco.glm.formula, data = larval.cisco)
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.yolk.fi.glm.formula, data = larval.yolk.fi, method = "LRT")
-rand(larval.yolk.fi.glm.final)
+mixed(larval.yolk.cisco.glm.formula, data = larval.cisco, method = "LRT")
+rand(larval.yolk.cisco.glm.final)
+
+
+# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - VENDACE --------------------------------------------
+
+## fit full model
+larval.yolk.vendace.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                   data = larval.vendace)
+
+## backward elimination to select best model
+larval.yolk.vendace.glm <- step(larval.yolk.vendace.glm.full)
+( larval.yolk.vendace.glm.formula <- get_model(larval.yolk.vendace.glm)@call[["formula"]])
+
+## fit best model
+larval.yolk.vendace.glm.final <- lmer(larval.yolk.vendace.glm.formula, data = larval.vendace)
+
+## likelihood ratio test for fixed and random effects
+mixed(larval.yolk.vendace.glm.formula, data = larval.vendace, method = "LRT")
+rand(larval.yolk.vendace.glm.final)
+
+
+# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - VENDACE --------------------------------------------
+
+## fit full model
+larval.yolk.whitefish.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
+                                     data = larval.whitefish)
+
+## backward elimination to select best model
+larval.yolk.whitefish.glm <- step(larval.yolk.whitefish.glm.full)
+( larval.yolk.whitefish.glm.formula <- get_model(larval.yolk.whitefish.glm)@call[["formula"]])
+
+## fit best model
+larval.yolk.whitefish.glm.final <- lmer(larval.yolk.whitefish.glm.formula, data = larval.whitefish)
+
+## likelihood ratio test for fixed and random effects
+mixed(larval.yolk.whitefish.glm.formula, data = larval.whitefish, method = "LRT")
+rand(larval.yolk.whitefish.glm.final)
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
