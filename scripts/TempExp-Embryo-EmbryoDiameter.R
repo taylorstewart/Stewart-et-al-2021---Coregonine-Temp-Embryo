@@ -22,7 +22,8 @@ data.summary <- data %>% group_by(population) %>%
             n = n())
 
 ## Fit linear model and run ANOVA
-lm.embryo <- lm(dia_mm ~ population, data = data)
+lm.embryo <- lm(dia_mm ~ 0 + population, data = data)
+summary(lm.embryo)
 anova(lm.embryo)
 
 ## Calculate estimated margin means
@@ -48,5 +49,6 @@ ggplot(data, aes(x = population, y = dia_mm)) +
         axis.text.y = element_text(size = 15),
         legend.position = "none",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
 
 ggsave("figures/adult/2020-EmbryoDiameter.png", width = 5.5, height = 7, dpi = 300)

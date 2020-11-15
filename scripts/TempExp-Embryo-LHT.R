@@ -148,6 +148,12 @@ anova(hatch.survival.vendace.glm.family, hatch.survival.vendace.glm.final)
 # female
 anova(hatch.survival.vendace.glm.female, hatch.survival.vendace.glm.final)
 
+## Calculate estimated marginal means - be very patient!
+hatch.survival.vendace.glm.emm <- emmeans(hatch.survival.vendace.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.survival.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+
 
 #### STATISTICAL ANALYSIS - SURVIVAL - WHITEFISH -------------------------------------------------
 
@@ -183,6 +189,12 @@ anova(hatch.survival.whitefish.glm.family, hatch.survival.whitefish.glm.final)
 anova(hatch.survival.whitefish.glm.female, hatch.survival.whitefish.glm.final)
 # male
 anova(hatch.survival.whitefish.glm.male, hatch.survival.whitefish.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+hatch.survival.whitefish.glm.emm <- emmeans(hatch.survival.whitefish.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.survival.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - CISCO --------------------------------------
@@ -221,6 +233,12 @@ hatch.dpf.vendace.glm.final <- lmer(hatch.dpf.vendace.glm.formula, data = hatch.
 mixed(hatch.dpf.vendace.glm.formula, data = hatch.dpf.vendace, method = "LRT")
 rand(hatch.dpf.vendace.glm.final)
 
+## Calculate estimated marginal means - be very patient!
+hatch.dpf.vendace.glm.emm <- emmeans(hatch.dpf.vendace.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.dpf.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+
 
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - WHITEFISH ----------------------------------
 
@@ -238,6 +256,12 @@ hatch.dpf.whitefish.glm.final <- lmer(hatch.dpf.whitefish.glm.formula, data = ha
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.dpf.whitefish.glm.formula, data = hatch.dpf.whitefish, method = "LRT")
 rand(hatch.dpf.whitefish.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+hatch.dpf.whitefish.glm.emm <- emmeans(hatch.dpf.whitefish.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.dpf.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
@@ -276,6 +300,12 @@ hatch.ADD.vendace.glm.final <- lmer(hatch.ADD.vendace.glm.formula, data = hatch.
 mixed(hatch.ADD.vendace.glm.formula, data = hatch.ADD.vendace, method = "LRT")
 rand(hatch.ADD.vendace.glm.final)
 
+## Calculate estimated marginal means - be very patient!
+hatch.ADD.vendace.glm.emm <- emmeans(hatch.ADD.vendace.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.ADD.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - WHITEFISH ----------------------------------
 
@@ -293,6 +323,12 @@ hatch.ADD.whitefish.glm.final <- lmer(hatch.ADD.whitefish.glm.formula, data = ha
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.ADD.whitefish.glm.formula, data = hatch.ADD.whitefish, method = "LRT")
 rand(hatch.ADD.whitefish.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+hatch.ADD.whitefish.glm.emm <- emmeans(hatch.ADD.whitefish.glm.final, ~ temperature)
+
+## Pairwise
+pairs(hatch.ADD.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------

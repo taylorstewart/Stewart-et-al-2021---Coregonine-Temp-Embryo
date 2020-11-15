@@ -162,8 +162,14 @@ larval.yolk.vendace.glm.final <- lmer(larval.yolk.vendace.glm.formula, data = la
 mixed(larval.yolk.vendace.glm.formula, data = larval.vendace, method = "LRT")
 rand(larval.yolk.vendace.glm.final)
 
+## Calculate estimated marginal means - be very patient!
+larval.yolk.vendace.glm.emm <- emmeans(larval.yolk.vendace.glm.final, ~ temperature)
 
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - VENDACE --------------------------------------------
+## Pairwise
+pairs(larval.yolk.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+
+
+# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - WHITEFISH --------------------------------------------
 
 ## fit full model
 larval.yolk.whitefish.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
@@ -179,6 +185,12 @@ larval.yolk.whitefish.glm.final <- lmer(larval.yolk.whitefish.glm.formula, data 
 ## likelihood ratio test for fixed and random effects
 mixed(larval.yolk.whitefish.glm.formula, data = larval.whitefish, method = "LRT")
 rand(larval.yolk.whitefish.glm.final)
+
+## Calculate estimated marginal means - be very patient!
+larval.yolk.whitefish.glm.emm <- emmeans(larval.yolk.whitefish.glm.final, ~ temperature)
+
+## Pairwise
+pairs(larval.yolk.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
