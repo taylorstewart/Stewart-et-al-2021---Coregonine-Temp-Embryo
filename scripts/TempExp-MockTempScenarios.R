@@ -125,10 +125,10 @@ plot <- ggplot(data = temp, aes(x = date, y = mean.sst, group = group, color = g
         plot.margin = unit(c(5, 10, 2, 2), "mm"))
 
 ggdraw() +
-  draw_image("figures/misc/egg_blue.png", x = -0.31, y = -0.17, scale = 0.1) +
+  draw_image("figures/misc/egg_blue.png", x = -0.31, y = -0.16, scale = 0.1) +
   draw_image("figures/misc/egg_orange.png", x = -0.18, y = -0.059, scale = 0.07) +
-  draw_image("figures/misc/larvae_blue.png", x = 0.4, y = -0.14, scale = 0.1) +
-  draw_image("figures/misc/larvae_orange.png", x = 0.26, y = -0.061, scale = 0.07) +
+  draw_image("figures/misc/larvae_blue.png", x = 0.4, y = -0.13, scale = 0.1) +
+  draw_image("figures/misc/larvae_orange.png", x = 0.26, y = -0.061, scale = 0.08) +
   draw_plot(plot)
 
 ggsave("figures/Mock_IncubationTemperature.png", height = 6, width = 9, dpi = 300)
