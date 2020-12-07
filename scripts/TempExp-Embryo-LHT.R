@@ -34,7 +34,7 @@ hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", s
          hatch = as.numeric(hatch)) %>% 
   filter(!is.na(eye), !is.na(hatch)) %>% 
   left_join(ADD) %>% 
-  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD)
+  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD, egg = mean_egg_diam_mm)
 
 hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "2019HatchingData") %>% 
   mutate(premature = 0) %>% 
@@ -89,7 +89,7 @@ hatch.ADD.whitefish <- hatch %>% filter(!is.na(ADD), hatch == 1, group == "LK-Wh
 
 ## backward elimination to select best model
 hatch.survival.cisco.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
-                                    (1|family) + (1|male) + (1|female) + (1|block), 
+                                    (1|family) + (1|male) + (1|female) + (1|egg) + (1|block), 
                                   direction = 'backward', data = hatch.survival.cisco, 
                                   family = binomial, control = glmerControl(optimizer = "bobyqa"))
 ( hatch.survival.cisco.glm.formula <- formula(hatch.survival.cisco.glm@model))
@@ -267,7 +267,7 @@ pairs(hatch.dpf.whitefish.glm.emm, simple = "temperature", adjust = "tukey", typ
 # STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
 
 ## fit full model
-hatch.ADD.cisco.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
+hatch.ADD.cisco.glm.full <- lmer(ADD ~ 1 + temperature + group + egg + temperature:group + 
                                 (1|family) + (1|male) + (1|female) + (1|block), 
                               data = hatch.ADD.cisco)
 
@@ -333,26 +333,93 @@ pairs(hatch.ADD.whitefish.glm.emm, simple = "temperature", adjust = "tukey", typ
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
 
-## Embryo Survival
+
+temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK-Whitefish",
+                             "LK-Vendace", "LK-Vendace", "LK-Vendace", "LK-Vendace",
+                             "LS-Cisco", "LS-Cisco", "LS-Cisco", "LS-Cisco",
+                             "LO-Cisco", "LO-Cisco", "LO-Cisco", "LO-Cisco"),
+                   temperature = c(rep(c(2.2, 4.0, 6.9, 8.0),2), rep(c(2.0, 4.4, 6.9, 8.9),2)),
+                   temp.treatment = factor(rep(c("Coldest ", "Cold ", "Warm ", "Warmest"), 4), 
+                                           ordered = TRUE, levels = c("Coldest ", "Cold ", "Warm ", "Warmest")))
+
+## Embryo Survival Overall
 hatch.survival.summary <- hatch %>% filter(eye != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.hatch = mean(hatch),
             se.hatch = sd(hatch)/sqrt(n()))
 
+## Embryo Survival - Standardized Within Family
+hatch.survival.summary.family <- hatch %>% filter(eye != 0) %>% 
+  group_by(population, temperature, group, family) %>% 
+  summarize(mean.hatch = mean(hatch)) %>% ungroup()
+
+hatch.survival.stand <- hatch.survival.summary.family %>% filter(temperature %in% c(2, 2.2)) %>% 
+  select(group, family, local.survival = mean.hatch)
+
+hatch.survival.summary.stand <- hatch.survival.summary.family %>% left_join(hatch.survival.stand) %>% 
+  filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
+  mutate(survival.diff = 100*(1+(mean.hatch-local.survival)/local.survival)) %>%
+  group_by(population, temperature, group) %>% 
+  summarize(mean.survival.diff = mean(survival.diff),
+            se.survival.diff = sd(survival.diff)/sqrt(n())) %>% 
+  left_join(temp) %>% 
+  mutate(se.survival.diff = ifelse(se.survival.diff == 0, NA, se.survival.diff),
+         percent.loss = 100-mean.survival.diff,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+
+
 ## Days Post Fertilization
 hatch.dpf.summary <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.dpf = mean(dpf),
-            se.dpf = sd(dpf)/sqrt(n()))
+            se.dpf = sd(dpf)/sqrt(n())) %>% ungroup()
+
+## Days Post Fertilization - Standardized Within Family
+hatch.dpf.summary.family <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
+  group_by(population, temperature, group, family) %>% 
+  summarize(mean.dpf = mean(dpf)) %>% ungroup()
+
+hatch.dpf.stand <- hatch.dpf.summary.family %>% filter(temperature %in% c(2, 2.2)) %>% 
+  select(group, family, local.dpf = mean.dpf)
+
+hatch.dpf.summary.stand <- hatch.dpf.summary.family %>% left_join(hatch.dpf.stand) %>% 
+  filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
+  mutate(dpf.diff = 100*(1+(mean.dpf-local.dpf)/local.dpf)) %>%
+  group_by(population, temperature, group) %>% 
+  summarize(mean.dpf.diff = mean(dpf.diff),
+            se.dpf.diff = sd(dpf.diff)/sqrt(n())) %>% 
+  left_join(temp) %>% 
+  mutate(se.dpf.diff = ifelse(se.dpf.diff == 0, NA, se.dpf.diff),
+         percent.loss = 100-mean.dpf.diff,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
 
 ## Accumulated Degree-Days
 hatch.ADD.summary <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.ADD = mean(ADD),
-            se.ADD = sd(ADD)/sqrt(n()))
+            se.ADD = sd(ADD)/sqrt(n())) %>% ungroup()
+
+## Accumulated Degree-Days - Standardized Within Family
+hatch.ADD.summary.family <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
+  group_by(population, temperature, group, family) %>% 
+  summarize(mean.ADD = mean(ADD)) %>% ungroup()
+
+hatch.ADD.stand <- hatch.ADD.summary.family %>% filter(temperature %in% c(2, 2.2)) %>% 
+  select(group, family, local.ADD = mean.ADD)
+
+hatch.ADD.summary.stand <- hatch.ADD.summary.family %>% left_join(hatch.ADD.stand) %>% 
+  filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
+  mutate(ADD.diff = 100*(1+(mean.ADD-local.ADD)/local.ADD)) %>%
+  group_by(population, temperature, group) %>% 
+  summarize(mean.ADD.diff = mean(ADD.diff),
+            se.ADD.diff = sd(ADD.diff)/sqrt(n())) %>% 
+  left_join(temp) %>% 
+  mutate(se.ADD.diff = ifelse(se.ADD.diff == 0, NA, se.ADD.diff),
+         percent.loss = 100-mean.ADD.diff,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
 
 
-# VISUALIZATIONS - MEANS ----------------------------------------------------------------------
+#### VISUALIZATIONS - MEANS ----------------------------------------------------------------------
 
 ## Embryo Survival
 plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), group = group, color = group, shape = group, linetype = group)) + 
@@ -369,17 +436,40 @@ plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.h
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(y = "Mean ES (%)") +
+  labs(y = "Mean Embryo Survival (%)", x = "Temperature (°C)") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.ticks.length = unit(2, 'mm'),
         legend.title = element_blank(),
         legend.text = element_text(size = 20),
         legend.key.size = unit(1.25, 'cm'),
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Plot Standardized Survival
+plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = mean.survival.diff, group = temp.treatment, fill = temp.treatment)) + 
+  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_errorbar(aes(ymin = (mean.survival.diff - se.survival.diff), ymax = (mean.survival.diff + se.survival.diff)), 
+                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+  #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.0, 105), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
+  scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
+  labs(y = "Standardized Survival (%)", x = "Population") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.ticks.length = unit(2, 'mm'),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(1.25, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+
 
 ## Days Post Fertilization
 plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, color = group, shape = group, linetype = group)) + 
@@ -398,15 +488,36 @@ plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group =
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   labs(y = "Mean DPF") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
         legend.title = element_blank(),
         legend.text = element_text(size = 20),
         legend.key.width = unit(1.25, 'cm'),
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+
+## Plot Standardized DPF
+plot.dpf.stand <- ggplot(hatch.dpf.summary.stand, aes(x = group, y = mean.dpf.diff, group = temp.treatment, fill = temp.treatment)) + 
+  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_errorbar(aes(ymin = (mean.dpf.diff - se.dpf.diff), ymax = (mean.dpf.diff + se.dpf.diff)), 
+                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+  #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.0, 102), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
+  scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
+  labs(y = "Standardized DPF (%)", x = "Population") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.ticks.length = unit(2, 'mm'),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(1.25, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
 
 ## Accumulated Degree-Days
 plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, color = group, shape = group, linetype = group)) + 
@@ -425,27 +536,69 @@ plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group =
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   labs(y = "Mean ADD (°C)") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 15, 0, 0)),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
         legend.title = element_blank(),
         legend.text = element_text(size = 20),
         legend.key.size = unit(1.25, 'cm'),
         legend.position = "top",
         plot.margin = unit(c(5, 5, 5, 5), 'mm'))
 
+## Plot Standardized ADD
+plot.ADD.stand <- ggplot(hatch.ADD.summary.stand, aes(x = group, y = mean.ADD.diff, group = temp.treatment, fill = temp.treatment)) + 
+  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_errorbar(aes(ymin = (mean.ADD.diff - se.ADD.diff), ymax = (mean.ADD.diff + se.ADD.diff)), 
+                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+  #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.0, 205), breaks = seq(80, 200, 20), expand = c(0, 0)) +
+  scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
+  coord_cartesian(ylim = c(80, 205)) +
+  labs(y = "Standardized ADD (%)", x = "Population") +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.ticks.length = unit(2, 'mm'),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(1.25, 'cm'),
+        legend.position = "top",
+        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+
+
 ## Combine all figures
-plot.all <- grid.arrange(arrangeGrob(textGrob(""), 
-                                     get_legend(plot.survival),
-                                     nrow = 1,
-                                     widths = c(0.09, 1)),
-                         arrangeGrob(plot.survival + theme(legend.position = "none", axis.title.x = element_blank()), 
-                                     plot.dpf + theme(legend.position = "none", axis.title.x = element_blank()),
-                                     plot.ADD + theme(legend.position = "none", axis.title.x = element_blank()),
-                                     nrow = 3,
-                                     bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 1.75, fontfamily = "Arial"))),
-                         heights = c(0.025, 1)
+plot.all <- grid.arrange(
+  arrangeGrob(
+    arrangeGrob(textGrob(""),
+                get_legend(plot.survival),
+                nrow = 1,
+                widths = c(0.09, 1)),
+    arrangeGrob(textGrob(""),
+                get_legend(plot.survival.stand),
+                nrow = 1,
+                widths = c(0.09, 1)),
+    ncol = 2,
+    widths = c(1, 0.7)
+    ),
+  arrangeGrob(
+    arrangeGrob(plot.survival + theme(legend.position = "none", axis.title.x = element_blank()),
+                plot.dpf + theme(legend.position = "none", axis.title.x = element_blank()),
+                plot.ADD + theme(legend.position = "none", axis.title.x = element_blank()),
+                nrow = 3,
+                bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 2, fontfamily = "Arial"))),
+    arrangeGrob(plot.survival.stand + theme(legend.position = "none", axis.title.x = element_blank()), 
+                plot.dpf.stand + theme(legend.position = "none", axis.title.x = element_blank()),
+                plot.ADD.stand + theme(legend.position = "none", axis.title.x = element_blank()),
+                nrow = 3,
+                bottom = textGrob("Study Group", x = 0.55, gp = gpar(cex = 2, fontfamily = "Arial"))),
+    ncol = 2,
+    widths = c(1, 0.7)
+    ),
+  heights = c(0.035, 1.1)
 )
 
-ggsave("figures/2020-Embryo-LHT-SE.png", plot = plot.all, width = 11, height = 15, dpi = 300)
+ggsave("figures/2020-Embryo-LHT-SE.png", plot = plot.all, width = 18, height = 18, dpi = 200)
+
