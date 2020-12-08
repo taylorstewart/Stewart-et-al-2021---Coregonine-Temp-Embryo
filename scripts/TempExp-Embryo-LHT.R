@@ -63,29 +63,23 @@ rm(hatch.NA, hatch.FI, ADD)
 ## filter to only eyed embryos
 hatch.survival.cisco <- hatch %>% filter(eye != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.survival.vendace <- hatch %>% filter(eye != 0, group == "LK-Vendace") %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
-hatch.survival.whitefish <- hatch %>% filter(eye != 0, group == "LK-Whitefish") %>% 
+hatch.survival.finland <- hatch %>% filter(eye != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 ## filter to only hatched embryos
 hatch.dpf.cisco <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.dpf.vendace <- hatch %>% filter(!is.na(dpf), hatch == 1, group == "LK-Vendace") %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
-hatch.dpf.whitefish <- hatch %>% filter(!is.na(dpf), hatch == 1, group == "LK-Whitefish") %>% 
+hatch.dpf.finland <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 ## filter to only hatched embryos
 hatch.ADD.cisco <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco"))%>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-hatch.ADD.vendace <- hatch %>% filter(!is.na(ADD), hatch == 1, group == "LK-Vendace") %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
-hatch.ADD.whitefish <- hatch %>% filter(!is.na(ADD), hatch == 1, group == "LK-Whitefish") %>% 
+hatch.ADD.finland <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
 
 
-# STATISTICAL ANALYSIS - SURVIVAL - CISCO -----------------------------------------------------
+#### STATISTICAL ANALYSIS - SURVIVAL - CISCO -----------------------------------------------------
 
 ## backward elimination to select best model
 hatch.survival.cisco.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
@@ -118,86 +112,44 @@ anova(hatch.survival.cisco.glm.family, hatch.survival.cisco.glm.final)
 anova(hatch.survival.cisco.glm.female, hatch.survival.cisco.glm.final)
 
 
-#### STATISTICAL ANALYSIS - SURVIVAL - VENDACE ---------------------------------------------------
+#### STATISTICAL ANALYSIS - SURVIVAL - FINLAND ---------------------------------------------------
 
 ## backward elimination to select best model
-hatch.survival.vendace.glm <- buildmer(hatch ~ temperature +
+hatch.survival.finland.glm <- buildmer(hatch ~ temperature + group + temperature:group+
                                          (1|family) + (1|male) + (1|female) + (1|block), 
-                                       direction = 'backward', data = hatch.survival.vendace, 
+                                       direction = 'backward', data = hatch.survival.finland, 
                                        family = binomial, control = glmerControl(optimizer = "bobyqa"))
-( hatch.survival.vendace.glm.formula <- formula(hatch.survival.vendace.glm@model))
+( hatch.survival.finland.glm.formula <- formula(hatch.survival.finland.glm@model))
 
 ## fit best model
-hatch.survival.vendace.glm.final <- glmer(hatch.survival.vendace.glm.formula, data = hatch.survival.vendace, 
+hatch.survival.finland.glm.final <- glmer(hatch.survival.finland.glm.formula, data = hatch.survival.finland, 
                                           family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## likelihood ratio test for fixed effects
-mixed(hatch.survival.vendace.glm.formula, data = hatch.survival.vendace, method = "LRT")
+mixed(hatch.survival.finland.glm.formula, data = hatch.survival.finland, method = "LRT")
 
 ## fit model without random effects for LRT
 # family
-hatch.survival.vendace.glm.family <- glmer(hatch ~ 1 + temperature + (1 | female), data = hatch.survival.vendace, 
+hatch.survival.finland.glm.family <- glmer(hatch ~ 1 + temperature + (1 | female), data = hatch.survival.finland, 
                                            family = binomial, control = glmerControl(optimizer = "bobyqa"))
 # female
-hatch.survival.vendace.glm.female <- glmer(hatch ~ 1 + temperature + (1 | family), data = hatch.survival.vendace, 
+hatch.survival.finland.glm.female <- glmer(hatch ~ 1 + temperature + (1 | family), data = hatch.survival.finland, 
                                            family = binomial, control = glmerControl(optimizer = "bobyqa"))
 
 ## Compare full to reduced models (LRT)
 # family
-anova(hatch.survival.vendace.glm.family, hatch.survival.vendace.glm.final)
+anova(hatch.survival.finland.glm.family, hatch.survival.finland.glm.final)
 # female
-anova(hatch.survival.vendace.glm.female, hatch.survival.vendace.glm.final)
+anova(hatch.survival.finland.glm.female, hatch.survival.finland.glm.final)
 
 ## Calculate estimated marginal means - be very patient!
-hatch.survival.vendace.glm.emm <- emmeans(hatch.survival.vendace.glm.final, ~ temperature)
+hatch.survival.finland.glm.emm <- emmeans(hatch.survival.finland.glm.final, ~ temperature)
 
 ## Pairwise
-pairs(hatch.survival.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+pairs(hatch.survival.finland.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
-#### STATISTICAL ANALYSIS - SURVIVAL - WHITEFISH -------------------------------------------------
-
-## backward elimination to select best model
-hatch.survival.whitefish.glm <- buildmer(hatch ~ temperature +
-                                         (1|family) + (1|male) + (1|female) + (1|block), 
-                                       direction = 'backward', data = hatch.survival.whitefish, 
-                                       family = binomial, control = glmerControl(optimizer = "bobyqa"))
-( hatch.survival.whitefish.glm.formula <- formula(hatch.survival.whitefish.glm@model))
-
-## fit best model
-hatch.survival.whitefish.glm.final <- glmer(hatch.survival.whitefish.glm.formula, data = hatch.survival.whitefish,
-                                            family = binomial, control = glmerControl(optimizer = "bobyqa"))
-
-## likelihood ratio test for fixed effects
-mixed(hatch.survival.whitefish.glm.formula, data = hatch.survival.whitefish, method = "LRT")
-
-## fit model without random effects for LRT
-# family
-hatch.survival.whitefish.glm.family <- glmer(hatch ~ 1 + temperature + (1 | female) + (1 | male), data = hatch.survival.whitefish, 
-                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
-# female
-hatch.survival.whitefish.glm.female <- glmer(hatch ~ 1 + temperature + (1 | family) + (1 | male), data = hatch.survival.whitefish, 
-                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
-# male
-hatch.survival.whitefish.glm.male <- glmer(hatch ~ 1 + temperature + (1 | family) + (1 | female), data = hatch.survival.whitefish, 
-                                             family = binomial, control = glmerControl(optimizer = "bobyqa"))
-
-## Compare full to reduced models (LRT)
-# family
-anova(hatch.survival.whitefish.glm.family, hatch.survival.whitefish.glm.final)
-# female
-anova(hatch.survival.whitefish.glm.female, hatch.survival.whitefish.glm.final)
-# male
-anova(hatch.survival.whitefish.glm.male, hatch.survival.whitefish.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-hatch.survival.whitefish.glm.emm <- emmeans(hatch.survival.whitefish.glm.final, ~ temperature)
-
-## Pairwise
-pairs(hatch.survival.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
-
-
-# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - CISCO --------------------------------------
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - CISCO --------------------------------------
 
 ## fit full model
 hatch.dpf.cisco.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
@@ -216,55 +168,29 @@ mixed(hatch.dpf.cisco.glm.formula, data = hatch.dpf.cisco, method = "LRT")
 rand(hatch.dpf.cisco.glm.final)
 
 
-# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - VENDACE ------------------------------------
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - FINLAND ------------------------------------
 
 ## fit full model
-hatch.dpf.vendace.glm.full <- lmer(dpf ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = hatch.dpf.vendace)
+hatch.dpf.finland.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
+                                     (1|family) + (1|male) + (1|female) + (1|block), 
+                              data = hatch.dpf.finland)
 
 ## backward elimination to select best model
-hatch.dpf.vendace.glm <- step(hatch.dpf.vendace.glm.full)
-( hatch.dpf.vendace.glm.formula <- get_model(hatch.dpf.vendace.glm)@call[["formula"]])
+hatch.dpf.finland.glm <- step(hatch.dpf.finland.glm.full)
+( hatch.dpf.finland.glm.formula <- get_model(hatch.dpf.finland.glm)@call[["formula"]])
 
 ## fit best model
-hatch.dpf.vendace.glm.final <- lmer(hatch.dpf.vendace.glm.formula, data = hatch.dpf.vendace)
+hatch.dpf.finland.glm.final <- lmer(hatch.dpf.finland.glm.formula, data = hatch.dpf.finland)
 
 ## likelihood ratio test for fixed and random effects
-mixed(hatch.dpf.vendace.glm.formula, data = hatch.dpf.vendace, method = "LRT")
-rand(hatch.dpf.vendace.glm.final)
+mixed(hatch.dpf.finland.glm.formula, data = hatch.dpf.finland, method = "LRT")
+rand(hatch.dpf.finland.glm.final)
 
 ## Calculate estimated marginal means - be very patient!
-hatch.dpf.vendace.glm.emm <- emmeans(hatch.dpf.vendace.glm.final, ~ temperature)
-
-## Pairwise
-pairs(hatch.dpf.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+hatch.dpf.finland.glm.emm <- emmeans(hatch.dpf.finland.glm.final, ~ temperature)
 
 
-# STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - WHITEFISH ----------------------------------
-
-## fit full model
-hatch.dpf.whitefish.glm.full <- lmer(dpf ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
-                                   data = hatch.dpf.whitefish)
-
-## backward elimination to select best model
-hatch.dpf.whitefish.glm <- step(hatch.dpf.whitefish.glm.full)
-( hatch.dpf.whitefish.glm.formula <- get_model(hatch.dpf.whitefish.glm)@call[["formula"]])
-
-## fit best model
-hatch.dpf.whitefish.glm.final <- lmer(hatch.dpf.whitefish.glm.formula, data = hatch.dpf.whitefish)
-
-## likelihood ratio test for fixed and random effects
-mixed(hatch.dpf.whitefish.glm.formula, data = hatch.dpf.whitefish, method = "LRT")
-rand(hatch.dpf.whitefish.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-hatch.dpf.whitefish.glm.emm <- emmeans(hatch.dpf.whitefish.glm.final, ~ temperature)
-
-## Pairwise
-pairs(hatch.dpf.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
-
-
-# STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
 
 ## fit full model
 hatch.ADD.cisco.glm.full <- lmer(ADD ~ 1 + temperature + group + egg + temperature:group + 
@@ -283,52 +209,26 @@ mixed(hatch.ADD.cisco.glm.formula, data = hatch.ADD.cisco, method = "LRT")
 rand(hatch.ADD.cisco.glm.final)
 
 
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - VENDACE ------------------------------------
+#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - FINLAND ------------------------------------
 
 ## fit full model
-hatch.ADD.vendace.glm.full <- lmer(ADD ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
-                                 data = hatch.ADD.vendace)
+hatch.ADD.finland.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
+                                     (1|family) + (1|male) + (1|female) + (1|block), 
+                                   data = hatch.ADD.finland)
 
 ## backward elimination to select best model
-hatch.ADD.vendace.glm <- step(hatch.ADD.vendace.glm.full)
-( hatch.ADD.vendace.glm.formula <- get_model(hatch.ADD.vendace.glm)@call[["formula"]])
+hatch.ADD.finland.glm <- step(hatch.ADD.finland.glm.full)
+( hatch.ADD.finland.glm.formula <- get_model(hatch.ADD.finland.glm)@call[["formula"]])
 
 ## fit best model
-hatch.ADD.vendace.glm.final <- lmer(hatch.ADD.vendace.glm.formula, data = hatch.ADD.vendace)
+hatch.ADD.finland.glm.final <- lmer(hatch.ADD.finland.glm.formula, data = hatch.ADD.finland)
 
 ## likelihood ratio test for fixed and random effects
-mixed(hatch.ADD.vendace.glm.formula, data = hatch.ADD.vendace, method = "LRT")
-rand(hatch.ADD.vendace.glm.final)
+mixed(hatch.ADD.finland.glm.formula, data = hatch.ADD.finland, method = "LRT")
+rand(hatch.ADD.finland.glm.final)
 
 ## Calculate estimated marginal means - be very patient!
-hatch.ADD.vendace.glm.emm <- emmeans(hatch.ADD.vendace.glm.final, ~ temperature)
-
-## Pairwise
-pairs(hatch.ADD.vendace.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
-
-
-#### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - WHITEFISH ----------------------------------
-
-## fit full model
-hatch.ADD.whitefish.glm.full <- lmer(ADD ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
-                                 data = hatch.ADD.whitefish)
-
-## backward elimination to select best model
-hatch.ADD.whitefish.glm <- step(hatch.ADD.whitefish.glm.full)
-( hatch.ADD.whitefish.glm.formula <- get_model(hatch.ADD.whitefish.glm)@call[["formula"]])
-
-## fit best model
-hatch.ADD.whitefish.glm.final <- lmer(hatch.ADD.whitefish.glm.formula, data = hatch.ADD.whitefish)
-
-## likelihood ratio test for fixed and random effects
-mixed(hatch.ADD.whitefish.glm.formula, data = hatch.ADD.whitefish, method = "LRT")
-rand(hatch.ADD.whitefish.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-hatch.ADD.whitefish.glm.emm <- emmeans(hatch.ADD.whitefish.glm.final, ~ temperature)
-
-## Pairwise
-pairs(hatch.ADD.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
+hatch.ADD.finland.glm.emm <- emmeans(hatch.ADD.finland.glm.final, ~ temperature)
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
