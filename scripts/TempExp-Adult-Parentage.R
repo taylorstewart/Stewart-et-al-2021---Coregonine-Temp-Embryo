@@ -8,14 +8,17 @@ library(magrittr)
 library(ggplot2)
 
 # Load parentage data -----------------------------------------------------
-parentage.NA <- read_excel("data/Artedi-Temperature-Experiments-2020.xlsx", sheet = "2020_Parentage")
-parentage.FI <- read_excel("data/Finland2019.xlsx", sheet = "2019_Parentage")
+parentage <- read_excel("data/Coregonine-Temperature-Experiment-AdultMeasurements.xlsx", sheet = "Adult") %>% 
+  mutate(Population = factor(Population, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
 
-parentage <- bind_rows(parentage.NA, parentage.FI) %>% 
-  mutate(group = interaction(population, species))
+parentage.summary <- parentage %>% group_by(Population, Sex) %>% 
+  summarize(mean.TL = mean(TL),
+            sd.TL = sd(TL),
+            mean.FM = mean(FM),
+            sd.FM = sd(FM))
 
 # Visualization -----------------------------------------------------------
-ggplot(parentage, aes(x = total.length.mm, y = weight.g, group = group, color = group)) +
+ggplot(parentage, aes(x = TL, y = FM, group = Population, color = Population)) +
   geom_point(size = 2, show.legend = FALSE) +
   geom_smooth(method = "lm", se = FALSE) +
   scale_y_continuous(limits = c(0, 1000), breaks = seq(0, 1000, 250), expand = c(0, 0)) +
