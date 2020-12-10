@@ -15,8 +15,6 @@ library(gridExtra)
 library(grid)
 library(cowplot)
 
-setDTthreads(threads = 0)  # 0 = all available
-
 
 #### LOAD INCUBATION TEMPERATURE DATA ------------------------------------------------------------
 
@@ -273,7 +271,7 @@ ggplot(phenoVar.mean.sd, aes(x = group, y = mean.var, group = component, fill = 
                     ymax = ifelse(mean.var + sd.var > 100, 100, mean.var + sd.var)), 
                 position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
   scale_y_continuous(limits = c(-0.5, 100), breaks = seq(0, 100, 20), expand = c(0, 0)) +
-  scale_fill_manual(values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c"),
+  scale_fill_manual(values = c("#f0f9e8", "#bae4bc", "#7bccc4", "#2b8cbe"),
                     labels = c("Dam  ", "Sire  ", "Dam:Sire  ", "Error")) +
   labs(y = "Mean % of Total Phenotypic Variation", x = "Study Group") +
   theme_bw() +
