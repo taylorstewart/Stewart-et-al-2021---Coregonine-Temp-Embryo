@@ -26,7 +26,7 @@ larval.lo <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasuremen
 larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, 
                               levels = c(2, 2.2, 4.0, 4.4, 6.9, 8, 8.9),
-                              labels = c("2.0°C", "2.2°C", "4.0°C", "4.4°C", "6.9°C", "8.0°C", "8.9°C")),
+                              labels = c("2.0", "2.2", "4.0", "4.4", "6.9", "8.0", "8.9")),
          female = factor(female, levels = seq(1, 12, 1),
                          labels = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12")),
          male = factor(male, levels = seq(1, 16, 1),
@@ -35,9 +35,7 @@ larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>%
          population = factor(interaction(population, species), ordered = TRUE,
                              levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi"),
                              labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
-         group = gsub("-", ".", interaction(population, temperature)),
-         group = gsub("°", "", group),
-         group = gsub("\\.", "_", group)) %>% 
+         group = interaction(population, temperature)) %>% 
   rename(sire = male, dam = female)
 
 ## Clean up environment
@@ -56,15 +54,15 @@ larval.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0)
 #### STATISTICAL ANALYSIS - GENERATE OBSERVED VARIANCES ------------------------------------------
 
 ## Length-at-Hatch
-phenoVar.tl.obs <- do.call(rbind, lapply(unique(larval.tl$group), function(grp) {
+phenoVar.tl.obs <- do.call(rbind, lapply(as.character(unique(larval.tl$group)), function(grp) {
   ## Filter to only a single temperature treatment
   data.grp <- larval.tl %>% filter(group == grp) %>% 
       select(family, dam, sire, block, length_mm)
     
     obs.tl <- observLmer(observ = data.grp, dam = "dam", sire = "sire", response = "length_mm")
     
-    obs.tl.df <- data.frame(group = substr(grp, 1, nchar(grp)-5),
-                            temperature = as.numeric(gsub("C", "", gsub("_", ".", substr(grp, nchar(grp)-3, nchar(grp))))),
+    obs.tl.df <- data.frame(group = substr(grp, 1, nchar(grp)-4),
+                            temperature = as.numeric(substr(grp, nchar(grp)-2, nchar(grp))),
                             dam.var = obs.tl$random[3,2],
                             dam.p = obs.tl$random[3,7],
                             dam.perc = obs.tl$random[3,3],
@@ -77,18 +75,18 @@ phenoVar.tl.obs <- do.call(rbind, lapply(unique(larval.tl$group), function(grp) 
                             residual.var = obs.tl$other[1,2],
                             residual.perc = obs.tl$other[1,3]) %>% 
       mutate_if(is.numeric, round, 4)  
-}))
+})) %>% mutate(trait = "LAH")
 
 ## Yolk-sac Volume
-phenoVar.yolk.obs <- do.call(rbind, lapply(unique(larval.yolk$group), function(grp) {
+phenoVar.yolk.obs <- do.call(rbind, lapply(as.character(unique(larval.yolk$group)), function(grp) {
   ## Filter to only a single temperature treatment
   data.grp <- larval.yolk %>% filter(group == grp) %>% 
     select(family, dam, sire, block, y_vol_mm3)
   
   obs.yolk <- observLmer2(observ = data.grp, dam = "dam", sire = "sire", response = "y_vol_mm3", block = "block")
   
-  obs.yolk.df <- data.frame(group = substr(grp, 1, nchar(grp)-5),
-                            temperature = as.numeric(gsub("C", "", gsub("_", ".", substr(grp, nchar(grp)-3, nchar(grp))))),
+  obs.yolk.df <- data.frame(group = substr(grp, 1, nchar(grp)-4),
+                            temperature = as.numeric(substr(grp, nchar(grp)-2, nchar(grp))),
                             dam.var = obs.yolk$random[3,2],
                             dam.p = obs.yolk$random[3,7],
                             dam.perc = obs.yolk$random[3,3],
@@ -101,107 +99,57 @@ phenoVar.yolk.obs <- do.call(rbind, lapply(unique(larval.yolk$group), function(g
                             residual.var = obs.yolk$other[1,2],
                             residual.perc = obs.yolk$other[1,3]) %>% 
     mutate_if(is.numeric, round, 4)  
-}))
+})) %>% mutate(trait = "YSV")
 
 
-#### CALCULATE MEANS ACROSS TEMPERATURES ---------------------------------------------------------
+# CREATE TEMPERATURE TREATMENT DATAFRAME ------------------------------------------------------
 
-## LAH
-phenoVar.tl.mean <- phenoVar.tl.obs %>% 
-  filter(group != "LK_Whitefish") %>% 
-  group_by(group) %>% 
-  summarize(mean.dam.perc = mean(dam.perc),
-            mean.sire.perc = mean(sire.perc),
-            mean.dam.sire.perc = mean(dam.sire.perc),
-            mean.error.perc = mean(residual.perc),
-            sd.dam.perc = sd(dam.perc),
-            sd.sire.perc = sd(sire.perc),
-            sd.dam.sire.perc = sd(dam.sire.perc),
-            sd.error.perc = sd(residual.perc)) %>% 
-  mutate(trait = "tl")
-
-## YSV
-phenoVar.yolk.mean <- phenoVar.yolk.obs %>% 
-  filter(group != "LK_Whitefish") %>% 
-  group_by(group) %>% 
-  summarize(mean.dam.perc = mean(dam.perc),
-            mean.sire.perc = mean(sire.perc),
-            mean.dam.sire.perc = mean(dam.sire.perc),
-            mean.error.perc = mean(residual.perc),
-            sd.dam.perc = sd(dam.perc),
-            sd.sire.perc = sd(sire.perc),
-            sd.dam.sire.perc = sd(dam.sire.perc),
-            sd.error.perc = sd(residual.perc)) %>% 
-  mutate(trait = "yolk")
-  
-
-#### CALCULATE CORRELATIONS ----------------------------------------------------------------------
-
-phenoVar.tl.cor <- heritability.tl.obs %>% 
-  filter(group != "LK_Whitefish") %>% 
-  group_by(group) %>% 
-  summarize(dam.cor = cor(dam.perc, temperature),
-            sire.cor = cor(sire.perc, temperature),
-            dam.sire.cor = cor(dam.sire.perc, temperature),
-            error.cor = cor(residual.perc, temperature)) %>% 
-  mutate(dam.r2 = abs(dam.cor^2),
-         sire.r2 = abs(sire.cor^2),
-         dam.sire.r2 = abs(dam.sire.cor^2),
-         error.r2 = abs(error.cor^2)) %>% 
-  mutate_if(is.numeric, round, 2)
-
-phenoVar.yolk.cor <- heritability.yolk.obs %>% 
-  filter(group != "LK_Whitefish") %>% 
-  group_by(group) %>% 
-  summarize(dam.cor = cor(dam.perc, temperature),
-            sire.cor = cor(sire.perc, temperature),
-            dam.sire.cor = cor(dam.sire.perc, temperature),
-            error.cor = cor(residual.perc, temperature)) %>% 
-  mutate(dam.r2 = abs(dam.cor^2),
-         sire.r2 = abs(sire.cor^2),
-         dam.sire.r2 = abs(dam.sire.cor^2),
-         error.r2 = abs(error.cor^2)) %>% 
-  mutate_if(is.numeric, round, 2)
+temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK-Whitefish",
+                             "LK-Vendace", "LK-Vendace", "LK-Vendace", "LK-Vendace",
+                             "LS-Cisco", "LS-Cisco", "LS-Cisco", "LS-Cisco",
+                             "LO-Cisco", "LO-Cisco", "LO-Cisco", "LO-Cisco"),
+                   temperature = c(rep(c(2.2, 4.0, 6.9, 8.0),2), rep(c(2.0, 4.4, 6.9, 8.9),2)),
+                   temp.treatment = factor(rep(c("Coldest", "Cold", "Warm", "Warmest"), 4), 
+                                           ordered = TRUE, levels = c("Coldest", "Cold", "Warm", "Warmest")))
 
 
 # COMBINE ALL TRAITS --------------------------------------------------------------------------
 
-phenoVar.mean <- bind_rows(phenoVar.tl.mean, phenoVar.yolk.mean) %>% 
-  pivot_longer(2:5, names_to = "component", values_to = "mean.var") %>% 
-  select(-sd.dam.perc, -sd.sire.perc, -sd.dam.sire.perc, -sd.error.perc) %>% 
+phenoVar.all <- bind_rows(phenoVar.tl.obs, phenoVar.yolk.obs) %>% 
+  left_join(temp) %>% 
+  filter(group != "LK-Whitefish") %>% 
+  select(group, temp.treatment, trait, dam.perc, sire.perc, dam.sire.perc, residual.perc) %>% 
+  pivot_longer(4:7, names_to = "component", values_to = "variance") %>% 
   mutate(component = factor(component, ordered = TRUE,
-                            levels = c("mean.dam.perc", "mean.sire.perc", "mean.dam.sire.perc", "mean.error.perc"),
-                            labels = c("Dam", "Sire", "Dam:Sire", "Error")))
-
-phenoVar.sd <- bind_rows(phenoVar.tl.mean, phenoVar.yolk.mean) %>% 
-  pivot_longer(6:9, names_to = "component", values_to = "sd.var") %>% 
-  select(-mean.dam.perc, -mean.sire.perc, -mean.dam.sire.perc, -mean.error.perc) %>% 
-  mutate(component = factor(component, ordered = TRUE,
-                            levels = c("sd.dam.perc", "sd.sire.perc", "sd.dam.sire.perc", "sd.error.perc"),
-                            labels = c("Dam", "Sire", "Dam:Sire", "Error")))
-
-phenoVar.mean.sd <- left_join(phenoVar.mean, phenoVar.sd) %>% 
-  mutate(group = factor(group, ordered = TRUE, levels = c("LK_Vendace", "LS_Cisco", "LO_Cisco"),
-                        labels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")),
-         trait = factor(trait, ordered = TRUE, levels = c("tl", "yolk"),
-                        labels = c("Length-at-Hatch", "Yolk-sac Volume")))
+                            levels = c("dam.perc", "sire.perc", "dam.sire.perc", "residual.perc"),
+                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
+         component.trt = factor(interaction(component, temp.treatment), ordered = TRUE,
+                                levels = c("Dam.Coldest", "Dam.Cold", "Dam.Warm", "Dam.Warmest",
+                                           "Sire.Coldest", "Sire.Cold", "Sire.Warm", "Sire.Warmest",
+                                           "Dam.Sire.Coldest", "Dam.Sire.Cold", "Dam.Sire.Warm", "Dam.Sire.Warmest",
+                                           "Error.Coldest", "Error.Cold", "Error.Warm", "Error.Warmest")),
+         trait = factor(trait, ordered = TRUE, levels = c("LAH", "YSV"),
+                        labels = c("Length-at-Hatch", "Yolk-sac Volume")),
+         group = factor(group, ordered = TRUE, 
+                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
 
 
 #### VISUALIZATION - HERITABILITY --------------------------------------------
 
-ggplot(phenoVar.mean.sd, aes(x = group, y = mean.var, group = component, fill = component)) + 
+ggplot(phenoVar.all, aes(x = group, y = variance, group = component.trt, fill = component)) + 
   geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
-  geom_errorbar(aes(ymin = ifelse(mean.var - sd.var < 0, 0, mean.var - sd.var), 
-                    ymax = ifelse(mean.var + sd.var > 100, 100, mean.var + sd.var)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
-  scale_y_continuous(limits = c(-0.5, 100), breaks = seq(0, 100, 20), expand = c(0, 0)) +
-  scale_fill_manual(values = c("#f0f9e8", "#bae4bc", "#7bccc4", "#2b8cbe"),
-                    labels = c("Dam  ", "Sire  ", "Dam:Sire  ", "Error")) +
-  labs(y = "Mean % of Total Phenotypic Variation", x = "Study Group") +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20), expand = c(0, 0)) +
+  scale_x_discrete(expand = c(0, 0.5)) +
+  scale_fill_manual(values = c("#7bccc4", "#f0f9e8", "#bae4bc", "#2b8cbe"),
+                    labels = c("Dam  ", "Sire  ", "Dam x Sire  ", "Error")) +
+  annotation_custom(textGrob("Coldest-Cold-Warm-Warmest", gp = gpar(fontsize = 15, col = "grey30")), 
+                    xmin = 2, xmax = 2, ymin = -7.5, ymax = -7.5) +
+  coord_cartesian(clip = "off") +
+  labs(y = "% of Total Phenotypic Variation", x = "Study Group\nTemperature Treatment") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
+        axis.text.x = element_text(size = 16, margin = margin(2, 0, 25, 0)),
         axis.text.y = element_text(size = 16),
         axis.ticks.length = unit(2, 'mm'),
         legend.title = element_blank(),
@@ -210,8 +158,8 @@ ggplot(phenoVar.mean.sd, aes(x = group, y = mean.var, group = component, fill = 
         legend.position = "top",
         strip.text = element_text(size = 16),
         strip.background = element_rect(color = "white", fill = "white"),
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) +
+        plot.margin = unit(c(1, 1, 1, 1), 'mm')) +
   facet_wrap(~trait)
 
-ggsave("figures/2020-Larvae-PhenoVar.png", width = 10, height = 8, dpi = 300)
+ggsave("figures/2020-Larvae-PhenoVar.png", width = 10, height = 8.5, dpi = 300)
 
