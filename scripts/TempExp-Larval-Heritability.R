@@ -134,6 +134,37 @@ phenoVar.all <- bind_rows(phenoVar.tl.obs, phenoVar.yolk.obs) %>%
                         levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
 
 
+#### CALCULATE CORRELATIONS ----------------------------------------------------------------------
+
+## LAH
+phenoVar.tl.cor <- phenoVar.tl.obs %>% 
+  filter(group != "LK-Whitefish") %>% 
+  group_by(group) %>% 
+  summarize(dam.cor = cor(dam.perc, temperature),
+            sire.cor = cor(sire.perc, temperature),
+            dam.sire.cor = cor(dam.sire.perc, temperature),
+            error.cor = cor(residual.perc, temperature)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate(dam.cor.2 = ifelse(dam.cor >= 0.7, "POSITIVE", ifelse(dam.cor <= -0.7, "NEGATIVE", "NC")),
+         sire.cor.2 = ifelse(sire.cor >= 0.7, "POSITIVE", ifelse(sire.cor <= -0.7, "NEGATIVE", "NC")),
+         dam.sire.cor.2 = ifelse(dam.sire.cor >= 0.7, "POSITIVE", ifelse(dam.sire.cor <= -0.7, "NEGATIVE", "NC")),
+         error.cor.2 = ifelse(error.cor >= 0.7, "POSITIVE", ifelse(error.cor <= -0.7, "NEGATIVE", "NC")))
+
+## YSV
+phenoVar.yolk.cor <- phenoVar.yolk.obs %>% 
+  filter(group != "LK-Whitefish") %>% 
+  group_by(group) %>% 
+  summarize(dam.cor = cor(dam.perc, temperature),
+            sire.cor = cor(sire.perc, temperature),
+            dam.sire.cor = cor(dam.sire.perc, temperature),
+            error.cor = cor(residual.perc, temperature)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate(dam.cor.2 = ifelse(dam.cor >= 0.7, "POSITIVE", ifelse(dam.cor <= -0.7, "NEGATIVE", "NC")),
+         sire.cor.2 = ifelse(sire.cor >= 0.7, "POSITIVE", ifelse(sire.cor <= -0.7, "NEGATIVE", "NC")),
+         dam.sire.cor.2 = ifelse(dam.sire.cor >= 0.7, "POSITIVE", ifelse(dam.sire.cor <= -0.7, "NEGATIVE", "NC")),
+         error.cor.2 = ifelse(error.cor >= 0.7, "POSITIVE", ifelse(error.cor <= -0.7, "NEGATIVE", "NC")))
+
+
 #### VISUALIZATION - HERITABILITY --------------------------------------------
 
 ggplot(phenoVar.all, aes(x = group, y = variance, group = component.trt, fill = component)) + 

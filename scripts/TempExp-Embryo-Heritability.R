@@ -180,6 +180,51 @@ phenoVar.all <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.
                         levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
 
 
+#### CALCULATE CORRELATIONS ----------------------------------------------------------------------
+
+## Embryo Survival
+phenoVar.survival.cor <- phenoVar.survival.obs %>% 
+  filter(group != "LK-Whitefish") %>% 
+  group_by(group) %>% 
+  summarize(dam.cor = cor(dam.perc, temperature),
+            sire.cor = cor(sire.perc, temperature),
+            dam.sire.cor = cor(dam.sire.perc, temperature),
+            error.cor = cor(residual.perc, temperature)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate(dam.cor.2 = ifelse(dam.cor >= 0.7, "POSITIVE", ifelse(dam.cor <= -0.7, "NEGATIVE", "NC")),
+         sire.cor.2 = ifelse(sire.cor >= 0.7, "POSITIVE", ifelse(sire.cor <= -0.7, "NEGATIVE", "NC")),
+         dam.sire.cor.2 = ifelse(dam.sire.cor >= 0.7, "POSITIVE", ifelse(dam.sire.cor <= -0.7, "NEGATIVE", "NC")),
+         error.cor.2 = ifelse(error.cor >= 0.7, "POSITIVE", ifelse(error.cor <= -0.7, "NEGATIVE", "NC")))
+
+## DPF
+phenoVar.dpf.cor <- phenoVar.dpf.obs %>% 
+  filter(group != "LK-Whitefish") %>% 
+  group_by(group) %>% 
+  summarize(dam.cor = cor(dam.perc, temperature),
+            sire.cor = cor(sire.perc, temperature),
+            dam.sire.cor = cor(dam.sire.perc, temperature),
+            error.cor = cor(residual.perc, temperature)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate(dam.cor.2 = ifelse(dam.cor >= 0.7, "POSITIVE", ifelse(dam.cor <= -0.7, "NEGATIVE", "NC")),
+         sire.cor.2 = ifelse(sire.cor >= 0.7, "POSITIVE", ifelse(sire.cor <= -0.7, "NEGATIVE", "NC")),
+         dam.sire.cor.2 = ifelse(dam.sire.cor >= 0.7, "POSITIVE", ifelse(dam.sire.cor <= -0.7, "NEGATIVE", "NC")),
+         error.cor.2 = ifelse(error.cor >= 0.7, "POSITIVE", ifelse(error.cor <= -0.7, "NEGATIVE", "NC")))
+
+## ADD
+phenoVar.ADD.cor <- phenoVar.ADD.obs %>% 
+  filter(group != "LK-Whitefish") %>% 
+  group_by(group) %>% 
+  summarize(dam.cor = cor(dam.perc, temperature),
+            sire.cor = cor(sire.perc, temperature),
+            dam.sire.cor = cor(dam.sire.perc, temperature),
+            error.cor = cor(residual.perc, temperature)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate(dam.cor.2 = ifelse(dam.cor >= 0.7, "POSITIVE", ifelse(dam.cor <= -0.7, "NEGATIVE", "NC")),
+         sire.cor.2 = ifelse(sire.cor >= 0.7, "POSITIVE", ifelse(sire.cor <= -0.7, "NEGATIVE", "NC")),
+         dam.sire.cor.2 = ifelse(dam.sire.cor >= 0.7, "POSITIVE", ifelse(dam.sire.cor <= -0.7, "NEGATIVE", "NC")),
+         error.cor.2 = ifelse(error.cor >= 0.7, "POSITIVE", ifelse(error.cor <= -0.7, "NEGATIVE", "NC")))
+
+
 #### VISUALIZATION -------------------------------------------------------------------------------
 
 ggplot(phenoVar.all, aes(x = group, y = variance, group = component.trt, fill = component)) + 
