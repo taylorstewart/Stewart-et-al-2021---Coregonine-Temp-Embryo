@@ -8,12 +8,8 @@
 library(tidyverse)
 library(readxl)
 library(data.table)
-library(ggplot2)
 library(fullfact)
 library(parallel)
-library(gridExtra)
-library(grid)
-library(cowplot)
 
 
 #### LOAD INCUBATION TEMPERATURE DATA ------------------------------------------------------------
@@ -148,7 +144,7 @@ phenoVar.ADD.obs <- do.call(rbind, lapply(as.character(unique(hatch.ADD$group)),
   })) %>% mutate(trait = "ADD")
 
 
-# CREATE TEMPERATURE TREATMENT DATAFRAME ------------------------------------------------------
+#### CREATE TEMPERATURE TREATMENT DATAFRAME ------------------------------------------------------
 
 temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK-Whitefish",
                              "LK-Vendace", "LK-Vendace", "LK-Vendace", "LK-Vendace",
@@ -159,7 +155,40 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
                                            ordered = TRUE, levels = c("Coldest", "Cold", "Warm", "Warmest")))
 
 
-# COMBINE ALL TRAITS --------------------------------------------------------------------------
+#### CALCULATE BOOTSTRAPPED ERROR ESTIMATES ------------------------------------------------------
+
+phenoVar.ES.boot <- read.csv("data/PhenoVar_Bootstrap/PhenoVar_ES_Var_Boot.csv")
+phenoVar.DPF.boot <- read.csv("data/PhenoVar_Bootstrap/PhenoVar_DPF_Var_Boot.csv")
+phenoVar.ADD.boot <- read.csv("data/PhenoVar_Bootstrap/PhenoVar_ADD_Var_Boot.csv")
+
+phenoVar.embryo.boot <- bind_rows(phenoVar.ES.boot, phenoVar.DPF.boot, phenoVar.ADD.boot) %>% 
+  mutate(temperature = as.numeric(gsub("_", ".", gsub("C", "", substr(group, nchar(group)-3, nchar(group))))),
+         group = gsub("_", "-", substr(group, 1, nchar(group)-5)),
+         dam.perc = (dam/total)*100,
+         sire.perc = (sire/total)*100,
+         dam.sire.perc = (dam.sire/total)*100,
+         residual.perc = (residual/total)*100) %>% 
+  filter(group != "LK-Whitefish") %>% 
+  left_join(temp) %>% 
+  group_by(group, temperature, temp.treatment) %>% 
+  summarize(dam.se = sd(dam.perc),
+            sire.se = sd(sire.perc),
+            dam.sire.se = sd(dam.sire.perc),
+            residual.se = sd(residual.perc)) %>% 
+  pivot_longer(4:7, names_to = "component", values_to = "error") %>% 
+  mutate(component = factor(component, ordered = TRUE,
+                            levels = c("dam.se", "sire.se", "dam.sire.se", "residual.se"),
+                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
+         component.trt = factor(interaction(component, temp.treatment), ordered = TRUE,
+                                levels = c("Dam.Coldest", "Dam.Cold", "Dam.Warm", "Dam.Warmest",
+                                           "Sire.Coldest", "Sire.Cold", "Sire.Warm", "Sire.Warmest",
+                                           "Dam.Sire.Coldest", "Dam.Sire.Cold", "Dam.Sire.Warm", "Dam.Sire.Warmest",
+                                           "Error.Coldest", "Error.Cold", "Error.Warm", "Error.Warmest")),
+         group = factor(group, ordered = TRUE, 
+                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
+         
+
+#### COMBINE ALL TRAITS --------------------------------------------------------------------------
 
 phenoVar.embryo.all <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.obs) %>% 
   left_join(temp) %>% 
@@ -175,7 +204,8 @@ phenoVar.embryo.all <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoV
                                            "Dam.Sire.Coldest", "Dam.Sire.Cold", "Dam.Sire.Warm", "Dam.Sire.Warmest",
                                            "Error.Coldest", "Error.Cold", "Error.Warm", "Error.Warmest")),
          group = factor(group, ordered = TRUE, 
-                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
+                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco"))) %>% 
+  left_join(phenoVar.embryo.boot)
 
 
 #### CALCULATE CORRELATIONS ----------------------------------------------------------------------

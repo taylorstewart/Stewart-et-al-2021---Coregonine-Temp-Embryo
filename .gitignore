@@ -12,4 +12,4 @@ pictures/.DS_Store
 README.html
 
 # Ignore files too large to push
-data/Heritability_Bootstrap/
+data/PhenoVar_Bootstrap/
