@@ -435,7 +435,7 @@ plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group =
                      labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
                         labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
-  labs(y = "Mean ADD (°C)") +
+  labs(y = "Mean ADD") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
