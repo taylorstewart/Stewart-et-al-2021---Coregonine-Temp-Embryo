@@ -188,24 +188,63 @@ phenoVar.embryo.boot <- bind_rows(phenoVar.ES.boot, phenoVar.DPF.boot, phenoVar.
                         levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
          
 
+#### CALCUALTE MEAN VARIANCE ACROSS TEMPERATURES -------------------------------------------------
+
+phenoVar.embryo.mean <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.obs) %>% 
+  group_by(group, trait) %>% 
+  summarize(dam.perc.mean = mean(dam.perc),
+            sire.perc.mean = mean(sire.perc),
+            dam.sire.perc.mean = mean(dam.sire.perc),
+            residual.perc.mean = mean(residual.perc)) %>% 
+  pivot_longer(3:6, names_to = "component", values_to = "variance") %>% 
+  filter(group != "LK-Whitefish") %>% 
+  mutate(component = factor(component, ordered = TRUE,
+                            levels = c("dam.perc.mean", "sire.perc.mean", "dam.sire.perc.mean", "residual.perc.mean"),
+                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
+         group = factor(group, ordered = TRUE, 
+                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
+
+
+#### CALCUALTE ERROR ACROSS TEMPERATURES ---------------------------------------------------------
+
+phenoVar.embryo.error <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.obs) %>% 
+  group_by(group, trait) %>% 
+  summarize(dam.perc.se = sd(dam.perc)/sqrt(n()),
+            sire.perc.se = sd(sire.perc)/sqrt(n()),
+            dam.sire.perc.se = sd(dam.sire.perc)/sqrt(n()),
+            residual.perc.se = sd(residual.perc)/sqrt(n())) %>% 
+  pivot_longer(3:6, names_to = "component", values_to = "error") %>% 
+  filter(group != "LK-Whitefish") %>% 
+  mutate(component = factor(component, ordered = TRUE,
+                            levels = c("dam.perc.se", "sire.perc.se", "dam.sire.perc.se", "residual.perc.se"),
+                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
+         group = factor(group, ordered = TRUE, 
+                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco")))
+
+
+# JOIN MEAN AND ERROR -------------------------------------------------------------------------
+
+phenoVar.embryo.all <- left_join(phenoVar.embryo.mean, phenoVar.embryo.error)
+
+
 #### COMBINE ALL TRAITS --------------------------------------------------------------------------
 
-phenoVar.embryo.all <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.obs) %>% 
-  left_join(temp) %>% 
-  filter(group != "LK-Whitefish") %>% 
-  select(group, temp.treatment, trait, dam.perc, sire.perc, dam.sire.perc, residual.perc) %>% 
-  pivot_longer(4:7, names_to = "component", values_to = "variance") %>% 
-  mutate(component = factor(component, ordered = TRUE,
-                            levels = c("dam.perc", "sire.perc", "dam.sire.perc", "residual.perc"),
-                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
-         component.trt = factor(interaction(component, temp.treatment), ordered = TRUE,
-                                levels = c("Dam.Coldest", "Dam.Cold", "Dam.Warm", "Dam.Warmest",
-                                           "Sire.Coldest", "Sire.Cold", "Sire.Warm", "Sire.Warmest",
-                                           "Dam.Sire.Coldest", "Dam.Sire.Cold", "Dam.Sire.Warm", "Dam.Sire.Warmest",
-                                           "Error.Coldest", "Error.Cold", "Error.Warm", "Error.Warmest")),
-         group = factor(group, ordered = TRUE, 
-                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco"))) %>% 
-  left_join(phenoVar.embryo.boot)
+#phenoVar.embryo.all <- bind_rows(phenoVar.survival.obs, phenoVar.dpf.obs, phenoVar.ADD.obs) %>% 
+#  left_join(temp) %>% 
+#  filter(group != "LK-Whitefish") %>% 
+#  select(group, temp.treatment, trait, dam.perc, sire.perc, dam.sire.perc, residual.perc) %>% 
+#  pivot_longer(4:7, names_to = "component", values_to = "variance") %>% 
+#  mutate(component = factor(component, ordered = TRUE,
+#                            levels = c("dam.perc", "sire.perc", "dam.sire.perc", "residual.perc"),
+#                            labels = c("Dam", "Sire", "Dam.Sire", "Error")),
+#         component.trt = factor(interaction(component, temp.treatment), ordered = TRUE,
+#                                levels = c("Dam.Coldest", "Dam.Cold", "Dam.Warm", "Dam.Warmest",
+#                                           "Sire.Coldest", "Sire.Cold", "Sire.Warm", "Sire.Warmest",
+#                                           "Dam.Sire.Coldest", "Dam.Sire.Cold", "Dam.Sire.Warm", "Dam.Sire.Warmest",
+#                                           "Error.Coldest", "Error.Cold", "Error.Warm", "Error.Warmest")),
+#         group = factor(group, ordered = TRUE, 
+#                        levels = c("LK-Vendace", "LS-Cisco", "LO-Cisco"))) %>% 
+#  left_join(phenoVar.embryo.boot)
 
 
 #### CALCULATE CORRELATIONS ----------------------------------------------------------------------

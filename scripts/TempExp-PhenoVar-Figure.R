@@ -26,11 +26,11 @@ phenoVar.all <- bind_rows(phenoVar.embryo.all, phenoVar.larval.all) %>%
 #### VISUALIZATION -------------------------------------------------------------------------------
 
 ## Create base plot
-plot.phenoVar <- ggplot(mapping = aes(x = group, y = variance, group = component.trt, fill = component)) + 
+plot.phenoVar <- ggplot(mapping = aes(x = group, y = variance, group = component, fill = component)) + 
   geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = ifelse(variance - error < 0, 0, variance - error), 
                     ymax = ifelse(variance + error > 100, 99.5, variance + error)), 
-                position = position_dodge(0.9), size = 0.4, width = 0.4, color = "gray30", show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.4, width = 0.4, color = "gray15", show.legend = FALSE) +
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20), expand = c(0, 0)) +
   scale_x_discrete(expand = c(0, 0.5)) +
   scale_fill_manual(values = c("#7bccc4", "#f0f9e8", "#bae4bc", "#2b8cbe"),
