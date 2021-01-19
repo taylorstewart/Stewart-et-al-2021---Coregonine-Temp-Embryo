@@ -34,11 +34,11 @@ hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", s
          hatch = as.numeric(hatch)) %>% 
   filter(!is.na(eye), !is.na(hatch)) %>% 
   left_join(ADD) %>% 
-  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD, egg = mean_egg_diam_mm)
+  dplyr::select(population, latitude, species, male, female, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
 
 hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "2019HatchingData") %>% 
   mutate(premature = 0) %>% 
-  dplyr::select(population, latitude, species, male, female, block, temperature, eye, hatch, dpf, ADD)
+  dplyr::select(population, latitude, species, male, female, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
 
 ## Combine all populations and years
 hatch <- bind_rows(hatch.NA, hatch.FI) %>% 
@@ -52,7 +52,9 @@ hatch <- bind_rows(hatch.NA, hatch.FI) %>%
          # Create a variable with population and species combined
          group = factor(interaction(population, species), ordered = TRUE,
                         levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi"),
-                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trans.dpf = dpf^(1/3),
+         trans.ADD = ADD^(1/3))
 
 ## Clean up environment
 rm(hatch.NA, hatch.FI, ADD)
@@ -68,15 +70,19 @@ hatch.survival.finland <- hatch %>% filter(eye != 0, group %in% c( "LK-Vendace",
 
 ## filter to only hatched embryos
 hatch.dpf.cisco <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
+  filter(include.incubation == "y")
 hatch.dpf.finland <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
+  filter(include.incubation == "y")
 
 ## filter to only hatched embryos
 hatch.ADD.cisco <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco"))%>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
+  filter(include.incubation == "y")
 hatch.ADD.finland <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
+  filter(include.incubation == "y")
 
 
 #### STATISTICAL ANALYSIS - SURVIVAL - CISCO -----------------------------------------------------
@@ -152,7 +158,7 @@ pairs(hatch.survival.finland.glm.emm, simple = "temperature", adjust = "tukey", 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - CISCO --------------------------------------
 
 ## fit full model
-hatch.dpf.cisco.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
+hatch.dpf.cisco.glm.full <- lmer(trans.dpf ~ 1 + temperature + group + temperature:group + 
                                    (1|family) + (1|male) + (1|female) + (1|block), 
                                  data = hatch.dpf.cisco)
 
@@ -163,6 +169,10 @@ hatch.dpf.cisco.glm <- step(hatch.dpf.cisco.glm.full)
 ## fit best model
 hatch.dpf.cisco.glm.final <- lmer(hatch.dpf.cisco.glm.formula, data = hatch.dpf.cisco)
 
+## check residuals for normality
+lattice::qqmath(hatch.dpf.cisco.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(hatch.dpf.cisco.glm.final))
+
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.dpf.cisco.glm.formula, data = hatch.dpf.cisco, method = "LRT")
 rand(hatch.dpf.cisco.glm.final)
@@ -171,7 +181,7 @@ rand(hatch.dpf.cisco.glm.final)
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (DPF) - FINLAND ------------------------------------
 
 ## fit full model
-hatch.dpf.finland.glm.full <- lmer(dpf ~ 1 + temperature + group + temperature:group + 
+hatch.dpf.finland.glm.full <- lmer(trans.dpf ~ 1 + temperature + group + temperature:group + 
                                      (1|family) + (1|male) + (1|female) + (1|block), 
                               data = hatch.dpf.finland)
 
@@ -182,18 +192,19 @@ hatch.dpf.finland.glm <- step(hatch.dpf.finland.glm.full)
 ## fit best model
 hatch.dpf.finland.glm.final <- lmer(hatch.dpf.finland.glm.formula, data = hatch.dpf.finland)
 
+## check residuals for normality
+lattice::qqmath(hatch.dpf.finland.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(hatch.dpf.finland.glm.final))
+
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.dpf.finland.glm.formula, data = hatch.dpf.finland, method = "LRT")
 rand(hatch.dpf.finland.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-hatch.dpf.finland.glm.emm <- emmeans(hatch.dpf.finland.glm.final, ~ temperature)
 
 
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - CISCO --------------------------------------
 
 ## fit full model
-hatch.ADD.cisco.glm.full <- lmer(ADD ~ 1 + temperature + group + egg + temperature:group + 
+hatch.ADD.cisco.glm.full <- lmer(trans.ADD ~ 1 + temperature + group + temperature:group + 
                                 (1|family) + (1|male) + (1|female) + (1|block), 
                               data = hatch.ADD.cisco)
 
@@ -204,6 +215,10 @@ hatch.ADD.cisco.glm <- step(hatch.ADD.cisco.glm.full)
 ## fit best model
 hatch.ADD.cisco.glm.final <- lmer(hatch.ADD.cisco.glm.formula, data = hatch.ADD.cisco)
 
+## check residuals for normality
+lattice::qqmath(hatch.ADD.cisco.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(hatch.ADD.cisco.glm.final))
+
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.ADD.cisco.glm.formula, data = hatch.ADD.cisco, method = "LRT")
 rand(hatch.ADD.cisco.glm.final)
@@ -212,7 +227,7 @@ rand(hatch.ADD.cisco.glm.final)
 #### STATISTICAL ANALYSIS - INCUBATION PERIOD (ADD) - FINLAND ------------------------------------
 
 ## fit full model
-hatch.ADD.finland.glm.full <- lmer(ADD ~ 1 + temperature + group + temperature:group + 
+hatch.ADD.finland.glm.full <- lmer(trans.ADD ~ 1 + temperature + group + temperature:group + 
                                      (1|family) + (1|male) + (1|female) + (1|block), 
                                    data = hatch.ADD.finland)
 
@@ -223,6 +238,10 @@ hatch.ADD.finland.glm <- step(hatch.ADD.finland.glm.full)
 ## fit best model
 hatch.ADD.finland.glm.final <- lmer(hatch.ADD.finland.glm.formula, data = hatch.ADD.finland)
 
+## check residuals for normality
+lattice::qqmath(hatch.ADD.finland.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(hatch.ADD.finland.glm.final))
+
 ## likelihood ratio test for fixed and random effects
 mixed(hatch.ADD.finland.glm.formula, data = hatch.ADD.finland, method = "LRT")
 rand(hatch.ADD.finland.glm.final)
@@ -232,7 +251,6 @@ hatch.ADD.finland.glm.emm <- emmeans(hatch.ADD.finland.glm.final, ~ temperature)
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
-
 
 temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK-Whitefish",
                              "LK-Vendace", "LK-Vendace", "LK-Vendace", "LK-Vendace",
@@ -323,7 +341,7 @@ hatch.ADD.summary.stand <- hatch.ADD.summary.family %>% left_join(hatch.ADD.stan
 
 ## Embryo Survival
 plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  #geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
   geom_errorbar(aes(ymin = (mean.hatch - se.hatch) * 100, ymax = (mean.hatch + se.hatch) * 100), 
                 position = position_dodge(0.13),
@@ -373,7 +391,7 @@ plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = m
 
 ## Days Post Fertilization
 plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  #geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
   geom_errorbar(aes(ymin = mean.dpf - se.dpf, ymax = mean.dpf + se.dpf), 
                 position = position_dodge(0.13),
@@ -422,7 +440,7 @@ plot.dpf.stand <- ggplot(hatch.dpf.summary.stand, aes(x = group, y = mean.dpf.di
 
 ## Accumulated Degree-Days
 plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  #geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 5, position = position_dodge(0.13)) +
   geom_errorbar(aes(ymin = mean.ADD - se.ADD, ymax = mean.ADD + se.ADD), 
                 position = position_dodge(0.13),
@@ -502,5 +520,5 @@ plot.all <- grid.arrange(
   heights = c(0.035, 1.1)
 )
 
-ggsave("figures/2020-Embryo-LHT-SE.png", plot = plot.all, width = 18, height = 18, dpi = 200)
+ggsave("figures/2020-Embryo-LHT-SE-noLine.png", plot = plot.all, width = 18, height = 18, dpi = 200)
 

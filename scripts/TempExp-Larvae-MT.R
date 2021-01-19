@@ -35,45 +35,53 @@ larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>%
          # Create a variable with population and species combined
          group = factor(interaction(population, species), ordered = TRUE,
                         levels = c("konnevesi.albula", "konnevesi.lavaretus", "superior.artedi", "ontario.artedi"),
-                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+                        labels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trans.yolk = y_vol_mm3^(1/3),
+         trans.tl = length_mm^3)
 
 
 #### FILTER TO EACH SPECIES' DATASET --------------------------------------------------------------
 
 ## filter to only length
-larval.cisco <- larval %>% filter(!is.na(length_mm), length_mm != 0, !is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels()
-larval.finland <- larval %>% filter(!is.na(length_mm), length_mm != 0, !is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
-  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels()
+larval.cisco.tl <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
+  filter(include.tl == "y")
+larval.cisco.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
+  filter(include.yolk == "y")
 
+larval.finland.tl <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
+  filter(include.tl == "y")
+larval.finland.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
+  mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
+  filter(include.yolk == "y")
 
 ## Clean up environment
-rm(larval.lo, larval.ls, larval.lk)
+#rm(larval.lo, larval.ls, larval.lk)
 
 
 #### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - CISCO ----------------------------------------------
 
 ## fit full model
-larval.tl.cisco.glm.full <- lmer(length_mm ~ 1 + temperature + group + temperature:group + 
+larval.tl.cisco.glm.full <- lmer(trans.tl ~ 1 + temperature + group + temperature:group + 
                                 (1|family) + (1|male) + (1|female) + (1|block), 
-                              data = larval.cisco)
+                              data = larval.cisco.tl)
 
 ## backward elimination to select best model
 larval.tl.cisco.glm <- step(larval.tl.cisco.glm.full)
 ( larval.tl.cisco.glm.formula <- get_model(larval.tl.cisco.glm)@call[["formula"]])
 
 ## fit best model
-larval.tl.cisco.glm.final <- lmer(larval.tl.cisco.glm.formula, data = larval.cisco)
+larval.tl.cisco.glm.final <- lmer(larval.tl.cisco.glm.formula, data = larval.cisco.tl)
+
+## check residuals for normality
+lattice::qqmath(larval.tl.cisco.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(larval.tl.cisco.glm.final))
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.tl.cisco.glm.formula, data = larval.cisco, method = "LRT")
+mixed(larval.tl.cisco.glm.formula, data = larval.cisco.tl, method = "LRT")
 rand(larval.tl.cisco.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-larval.tl.cisco.glm.emm <- emmeans(larval.tl.cisco.glm.final, ~ temperature | group)
-
-## Pairwise
-pairs(larval.tl.cisco.glm.emm, simple = list("temperature", "group"), adjust = "tukey", type = "response") 
 
 
 #### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - FINLAND --------------------------------------------
@@ -81,68 +89,68 @@ pairs(larval.tl.cisco.glm.emm, simple = list("temperature", "group"), adjust = "
 ## fit full model
 larval.tl.finland.glm.full <- lmer(length_mm ~ 1 + temperature + group + temperature:group + 
                                      (1|family) + (1|male) + (1|female) + (1|block), 
-                                 data = larval.finland)
+                                 data = larval.finland.tl)
 
 ## backward elimination to select best model
 larval.tl.finland.glm <- step(larval.tl.finland.glm.full)
 ( larval.tl.finland.glm.formula <- get_model(larval.tl.finland.glm)@call[["formula"]])
 
 ## fit best model
-larval.tl.finland.glm.final <- lmer(larval.tl.finland.glm.formula, data = larval.finland)
+larval.tl.finland.glm.final <- lmer(larval.tl.finland.glm.formula, data = larval.finland.tl)
+
+## check residuals for normality
+lattice::qqmath(larval.tl.finland.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(larval.tl.finland.glm.final))
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.tl.finland.glm.formula, data = larval.finland, method = "LRT")
+mixed(larval.tl.finland.glm.formula, data = larval.finland.tl, method = "LRT")
 rand(larval.tl.finland.glm.final)
 
-## Calculate estimated marginal means - be very patient!
-larval.tl.finland.glm.emm <- emmeans(larval.tl.finland.glm.final, ~ temperature)
 
-## Pairwise
-pairs(larval.tl.finland.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
-
-
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - CISCO ----------------------------------------------
+#### STATISTICAL ANALYSIS - YOLK-SAC VOLUME - CISCO ----------------------------------------------
 
 ## fit full model
-larval.yolk.cisco.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + group + temperature:group + 
+larval.yolk.cisco.glm.full <- lmer(trans.yolk ~ 1 + temperature + group + temperature:group + 
                                   (1|family) + (1|male) + (1|female) + (1|block), 
-                                data = larval.cisco)
+                                data = larval.cisco.yolk)
 
 ## backward elimination to select best model
 larval.yolk.cisco.glm <- step(larval.yolk.cisco.glm.full)
 ( larval.yolk.cisco.glm.formula <- get_model(larval.yolk.cisco.glm)@call[["formula"]])
 
 ## fit best model
-larval.yolk.cisco.glm.final <- lmer(larval.yolk.cisco.glm.formula, data = larval.cisco)
+larval.yolk.cisco.glm.final <- lmer(larval.yolk.cisco.glm.formula, data = larval.cisco.yolk)
+
+## check residuals for normality
+lattice::qqmath(larval.yolk.cisco.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(larval.yolk.cisco.glm.final))
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.yolk.cisco.glm.formula, data = larval.cisco, method = "LRT")
+mixed(larval.yolk.cisco.glm.formula, data = larval.cisco.yolk, method = "LRT")
 rand(larval.yolk.cisco.glm.final)
 
 
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - FINLAND --------------------------------------------
+#### STATISTICAL ANALYSIS - YOLK-SAC VOLUME - FINLAND --------------------------------------------
 
 ## fit full model
-larval.yolk.finland.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + group + temperature:group + 
+larval.yolk.finland.glm.full <- lmer(trans.yolk ~ 1 + temperature + group + temperature:group + 
                                      (1|family) + (1|male) + (1|female), 
-                                   data = larval.finland)
+                                   data = larval.finland.yolk)
 
 ## backward elimination to select best model
 larval.yolk.finland.glm <- step(larval.yolk.finland.glm.full)
 ( larval.yolk.finland.glm.formula <- get_model(larval.yolk.finland.glm)@call[["formula"]])
 
 ## fit best model
-larval.yolk.finland.glm.final <- lmer(larval.yolk.finland.glm.formula, data = larval.finland)
+larval.yolk.finland.glm.final <- lmer(larval.yolk.finland.glm.formula, data = larval.finland.yolk)
+
+## check residuals for normality
+lattice::qqmath(larval.yolk.finland.glm.final, id = 0.1, idLabels = ~.obs)
+hist(rstudent(larval.yolk.finland.glm.final))
 
 ## likelihood ratio test for fixed and random effects
-mixed(larval.yolk.finland.glm.formula, data = larval.finland, method = "LRT")
+mixed(larval.yolk.finland.glm.formula, data = larval.finland.yolk, method = "LRT")
 rand(larval.yolk.finland.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-larval.yolk.finland.glm.emm <- emmeans(larval.yolk.finland.glm.final, ~ temperature)
-
-## Pairwise
-pairs(larval.yolk.finland.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 # STATISTICAL ANALYSIS - YOLK-SAC VOLUME - WHITEFISH --------------------------------------------
@@ -161,12 +169,6 @@ larval.yolk.whitefish.glm.final <- lmer(larval.yolk.whitefish.glm.formula, data 
 ## likelihood ratio test for fixed and random effects
 mixed(larval.yolk.whitefish.glm.formula, data = larval.whitefish, method = "LRT")
 rand(larval.yolk.whitefish.glm.final)
-
-## Calculate estimated marginal means - be very patient!
-larval.yolk.whitefish.glm.emm <- emmeans(larval.yolk.whitefish.glm.final, ~ temperature)
-
-## Pairwise
-pairs(larval.yolk.whitefish.glm.emm, simple = "temperature", adjust = "tukey", type = "response") 
 
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
@@ -234,7 +236,7 @@ larval.yolk.summary.stand <- larval.yolk.summary.family %>% left_join(larval.yol
 
 ## Length-at-Hatch
 plot.tl <- ggplot(larval.tl.summary, aes(x = temperature, y = mean.tl, group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  #geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 3.25, position = position_dodge(0.13)) +
   geom_errorbar(aes(ymin = mean.tl - se.tl, ymax = mean.tl + se.tl), 
                 position = position_dodge(0.1),
@@ -283,7 +285,7 @@ plot.tl.stand <- ggplot(larval.tl.summary.stand, aes(x = group, y = mean.tl.diff
 
 ## Yolk-sac Volume
 plot.yolk <- ggplot(larval.yolk.summary, aes(x = temperature, y = mean.yolk, group = group, color = group, shape = group, linetype = group)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  #geom_line(size = 1.0, position = position_dodge(0.13)) +
   geom_point(size = 3.25, position = position_dodge(0.13)) +
   geom_errorbar(aes(ymin = mean.yolk - se.yolk, ymax = mean.yolk + se.yolk), 
                 position = position_dodge(0.13),
@@ -360,5 +362,5 @@ plot.all <- grid.arrange(
   heights = c(0.04, 1.1)
 )
 
-ggsave("figures/2020-Larval-MT-SE.png", plot = plot.all, width = 18, height = 14, dpi = 300)
+ggsave("figures/2020-Larval-MT-SE-noLine.png", plot = plot.all, width = 18, height = 14, dpi = 300)
 
