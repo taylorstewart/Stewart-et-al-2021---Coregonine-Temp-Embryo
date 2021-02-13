@@ -1,7 +1,7 @@
-North America a Coregonine Latitude
+Coregonine (Great Lakes & Finland) Temperature Embryo Response Experiment
 ==========
 
-This repository contains data files, analysis scripts, and manuscript for the Great Lakes and Finland portions of *Influence of changing lake temperatures on early life stages of freshwater whitefishes at local to global scales*.
+This repository contains data files, analysis scripts, and manuscript for the Great Lakes and Finland portions of *Influence of warming temperatures on coregonine embryogenesis within and among species*.
 
 
 # Data files (not in the repo)
