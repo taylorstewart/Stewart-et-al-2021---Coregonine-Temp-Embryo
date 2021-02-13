@@ -133,5 +133,5 @@ ggdraw() +
   draw_image("figures/misc/larvae_orange.png", x = 0.26, y = -0.053, scale = 0.08) +
   draw_plot(plot)
 
-ggsave("figures/Mock-IncubationTemperature.png", height = 6, width = 9, dpi = 300)
+ggsave("figures/Mock-IncubationTemperature.tiff", height = 6, width = 9, dpi = 300)
 

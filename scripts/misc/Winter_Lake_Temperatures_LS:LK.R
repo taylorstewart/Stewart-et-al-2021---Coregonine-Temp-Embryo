@@ -69,6 +69,42 @@ temp.lk <- read_excel("data/Winter_Lake_Temperatures/LakeKonnevesi_temperature.x
 
 
 ## ===========================================================
+## Read in Geneva data
+## ===========================================================
+temp.lg <- read.csv("/Users/taylor/SynologyDrive/Cisco-Climate-Change/Coregonine-DegreeDay-Modeling/data/LakeGeneva_temperature_sonde_2015_15m.csv", header = TRUE) %>% 
+  mutate(date = as.POSIXct(date, format = "%m/%d/%Y"),
+         date = sub('..', '', date),
+         date = as.POSIXct(paste0("20", date), format = "%Y-%m-%d"),
+         year = year(date),
+         month = month(date),
+         day = day(date),
+         year = ifelse(year == 2014, 2019, 2020),
+         date = as.POSIXct(paste0(year, "-", month, "-", day), format = "%Y-%m-%d"))
+
+
+## ===========================================================
+## Read in Bourget data
+## ===========================================================
+temp.lb <- read.csv("/Users/taylor/SynologyDrive/Cisco-Climate-Change/Coregonine-DegreeDay-Modeling/data/LakeBourget_temperature_sonde_2015_15m.csv", header = TRUE) %>% 
+  mutate(date = as.POSIXct(date, format = "%m/%d/%Y"),
+         date = sub('..', '', date),
+         date = as.POSIXct(paste0("20", date), format = "%Y-%m-%d"),
+         year = year(date),
+         month = month(date),
+         day = day(date),
+         year = ifelse(year == 2013, 2019, 2020),
+         date = as.POSIXct(paste0(year, "-", month, "-", day), format = "%Y-%m-%d"))
+
+
+## ===========================================================
+## Read in Constance data
+## ===========================================================
+temp.lc <- data.frame(lake = "constance",
+                      date = as.POSIXct(c("2019-11-1", "2019-12-1", "2020-1-1", "2020-2-1", "2020-3-1", "2020-4-1", "2020-5-1", "2020-6-1"), format = "%Y-%m-%d"),
+                      temp.c = c(10.42, 7.42, 6.16, 5.42, 5.6, 8.11, 10.57, 14.91))
+
+
+## ===========================================================
 ## Spawning periods
 ## ===========================================================
 temp.spawn.ls <- data.frame(lake = "superior",
@@ -87,8 +123,20 @@ temp.spawn.lk.l <- data.frame(lake = "konnevesi",
                               date = as.POSIXct("2019-11-12"),
                               temp.c = 4.0)
 
+temp.spawn.lc <- data.frame(lake = "constance",
+                            date = as.POSIXct("2019-12-20"),
+                            temp.c = 6.65)
 
-temp.spawn <- bind_rows(temp.spawn.ls, temp.spawn.lo, temp.spawn.lk.a, temp.spawn.lk.l)
+temp.spawn.lb <- data.frame(lake = "bourget",
+                            date = as.POSIXct("2019-12-28"),
+                            temp.c = 7.32)
+
+temp.spawn.lg <- data.frame(lake = "geneva",
+                            date = as.POSIXct("2020-01-20"),
+                            temp.c = 8)
+
+temp.spawn <- bind_rows(temp.spawn.ls, temp.spawn.lo, temp.spawn.lk.a, temp.spawn.lk.l,
+                        temp.spawn.lc, temp.spawn.lb, temp.spawn.lg)
 
 
 ## ===========================================================
@@ -107,14 +155,27 @@ temp.hatch.lk <- data.frame(lake = "konnevesi",
                             date = as.POSIXct("2020-05-01"),
                             temp.c = 4.19)
 
-temp.hatch <- bind_rows(temp.hatch.ls, temp.hatch.lo, temp.hatch.lk)
+temp.hatch.lc <- data.frame(lake = "constance",
+                            date = as.POSIXct("2020-03-18"),
+                            temp.c = 6.7)
+
+temp.hatch.lb <- data.frame(lake = "bourget",
+                            date = as.POSIXct("2020-03-14"),
+                            temp.c = 6.6)
+
+temp.hatch.lg <- data.frame(lake = "geneva",
+                            date = as.POSIXct("2020-03-10"),
+                            temp.c = 6.45)
+
+temp.hatch <- bind_rows(temp.hatch.ls, temp.hatch.lo, temp.hatch.lk, 
+                        temp.hatch.lc, temp.hatch.lb, temp.hatch.lg)
 
 
 ## ===========================================================
 ## Combine lake temps
 ## ===========================================================
-temp <- bind_rows(temp.ls, temp.lo, temp.lk) %>% 
-  mutate(lake = factor(lake, levels = c("konnevesi", "superior", "ontario"), ordered = TRUE))
+temp <- bind_rows(temp.ls, temp.lo, temp.lk, temp.lc, temp.lb, temp.lg) %>% 
+  mutate(lake = factor(lake, levels = c("konnevesi", "superior", "constance", "geneva", "bourget", "ontario"), ordered = TRUE))
 
 
 ## ===========================================================
@@ -124,11 +185,17 @@ ggplot(temp, aes(x = date, y = temp.c, group = lake)) +
   geom_path(size = 1.75, aes(color = lake)) +
   geom_point(data = temp.spawn, aes(x = date, y = temp.c, group = lake), size = 5, shape = 4, stroke = 2, show.legend = FALSE) +
   geom_point(data = temp.hatch, aes(x = date, y = temp.c, group = lake), size = 5, shape = 1, stroke = 2, show.legend = FALSE) +
+  geom_hline(yintercept = 2, linetype = "dashed", color = "gray50") +
+  geom_hline(yintercept = 4.5, linetype = "dashed", color = "gray50") +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "gray50") +
+  geom_hline(yintercept = 9, linetype = "dashed", color = "gray50") +
   scale_x_datetime(date_labels = "%m", date_breaks = "1 month", expand = c(0.0, 0.0)) +
-  scale_y_continuous(limits = c(-0.25, 14), breaks = seq(0, 14, 2), expand = c(0.0, 0.0)) +
-  scale_color_manual(labels = c("Konnevesi  ", "Superior  ", "Ontario"),
-                     values = c("#a6cee3", "#1f78b4", "#b2df8a")) +
+  scale_y_continuous(limits = c(-0.25, 16), breaks = seq(0, 16, 2), expand = c(0.0, 0.0)) +
+  scale_color_manual(labels = c("Konnevesi (FI; 62°N)  ", "Superior (US; 47°N)  ", "Constance (DE; 47°N)", 
+                                "Geneva (FR; 46°N)", "Bourget (FR; 45°N)", "Ontario (US; 44°N)"),
+                     values = c("gray50", "#253494", "#2c7fb8", "#41b6c4", "#7fcdbb", "#c7e9b4")) +
   labs(y = "Water Temperature (°C)", x = "Month") +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
   theme(panel.background = element_blank(), 
         panel.grid = element_blank(), 
         axis.line = element_line(), 
@@ -144,5 +211,5 @@ ggplot(temp, aes(x = date, y = temp.c, group = lake)) +
         strip.background = element_rect(fill = "white"), 
         plot.margin = unit(c(2, 5, 5, 5), "mm"))
 
-ggsave("figures/Temp-Profiles.png", width = 12, height = 7, dpi = 300)
+ggsave("figures/Temp-Profiles-All-AllTemps.png", width = 12, height = 7, dpi = 300)
 

@@ -69,5 +69,5 @@ plot.phenoVar.all <- grid.arrange(grobs = lapply(
 ))
 
 ## Save figure
-ggsave("figures/2020-PhenoVar.png", plot = plot.phenoVar.all, width = 15, height = 12.5, dpi = 300)
+ggsave("figures/2020-PhenoVar.tiff", plot = plot.phenoVar.all, width = 15, height = 12.5, dpi = 300)
 

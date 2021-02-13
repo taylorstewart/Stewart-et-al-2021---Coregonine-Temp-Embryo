@@ -15,6 +15,7 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 library(cowplot)
+library(emmeans)
 
 
 #### LOAD INCUBATION TEMPERATURE DATA ----------------------------------------
@@ -89,7 +90,7 @@ hatch.ADD.finland <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c( "LK
 
 ## backward elimination to select best model
 hatch.survival.cisco.glm <- buildmer(hatch ~ temperature + group + temperature:group + 
-                                    (1|family) + (1|male) + (1|female) + (1|egg) + (1|block), 
+                                    (1|family) + (1|male) + (1|female) + (1|block), 
                                   direction = 'backward', data = hatch.survival.cisco, 
                                   family = binomial, control = glmerControl(optimizer = "bobyqa"))
 ( hatch.survival.cisco.glm.formula <- formula(hatch.survival.cisco.glm@model))
@@ -264,7 +265,9 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
 hatch.survival.summary <- hatch %>% filter(eye != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.hatch = mean(hatch),
-            se.hatch = sd(hatch)/sqrt(n()))
+            se.hatch = sd(hatch)/sqrt(n())) %>% 
+  group_by(temperature) %>% 
+  mutate(width = 0.15 * n())
 
 ## Embryo Survival - Standardized Within Family
 hatch.survival.summary.family <- hatch %>% filter(eye != 0) %>% 
@@ -290,7 +293,9 @@ hatch.survival.summary.stand <- hatch.survival.summary.family %>% left_join(hatc
 hatch.dpf.summary <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.dpf = mean(dpf),
-            se.dpf = sd(dpf)/sqrt(n())) %>% ungroup()
+            se.dpf = sd(dpf)/sqrt(n())) %>% ungroup() %>% 
+  group_by(temperature) %>% 
+  mutate(width = 0.15 * n())
 
 ## Days Post Fertilization - Standardized Within Family
 hatch.dpf.summary.family <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
@@ -315,7 +320,9 @@ hatch.dpf.summary.stand <- hatch.dpf.summary.family %>% left_join(hatch.dpf.stan
 hatch.ADD.summary <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.ADD = mean(ADD),
-            se.ADD = sd(ADD)/sqrt(n())) %>% ungroup()
+            se.ADD = sd(ADD)/sqrt(n())) %>% ungroup() %>% 
+  group_by(temperature) %>% 
+  mutate(width = 0.15 * n())
 
 ## Accumulated Degree-Days - Standardized Within Family
 hatch.ADD.summary.family <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
@@ -340,12 +347,14 @@ hatch.ADD.summary.stand <- hatch.ADD.summary.family %>% left_join(hatch.ADD.stan
 #### VISUALIZATIONS - MEANS ----------------------------------------------------------------------
 
 ## Embryo Survival
-plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), group = group, color = group, shape = group, linetype = group)) + 
-  #geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
+plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), 
+                                                    group = group, color = group, shape = group, 
+                                                    linetype = group, width = width)) + 
+  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
   geom_errorbar(aes(ymin = (mean.hatch - se.hatch) * 100, ymax = (mean.hatch + se.hatch) * 100), 
                 position = position_dodge(0.13),
-                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+                size = 1, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0, 105), breaks = seq(0, 100, 25), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -375,7 +384,7 @@ plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = m
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 105), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
-  labs(y = "Standardized Survival (%)", x = "Population") +
+  labs(y = "Standardized Survival (%)", x = "Study Group") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
@@ -390,12 +399,14 @@ plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = m
 
 
 ## Days Post Fertilization
-plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, group = group, color = group, shape = group, linetype = group)) + 
-  #geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
+plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, 
+                                          group = group, color = group, shape = group, 
+                                          linetype = group, width = width)) + 
+  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
   geom_errorbar(aes(ymin = mean.dpf - se.dpf, ymax = mean.dpf + se.dpf), 
                 position = position_dodge(0.13),
-                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+                size = 1, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(30, 225), breaks = seq(50, 225, 25), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -425,7 +436,7 @@ plot.dpf.stand <- ggplot(hatch.dpf.summary.stand, aes(x = group, y = mean.dpf.di
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 102), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
-  labs(y = "Standardized DPF (%)", x = "Population") +
+  labs(y = "Standardized DPF (%)", x = "Study Group") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
@@ -439,12 +450,14 @@ plot.dpf.stand <- ggplot(hatch.dpf.summary.stand, aes(x = group, y = mean.dpf.di
         plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
 
 ## Accumulated Degree-Days
-plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, group = group, color = group, shape = group, linetype = group)) + 
-  #geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13)) +
+plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, 
+                                          group = group, color = group, shape = group, 
+                                          linetype = group, width = width)) + 
+  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
   geom_errorbar(aes(ymin = mean.ADD - se.ADD, ymax = mean.ADD + se.ADD), 
                 position = position_dodge(0.13),
-                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+                size = 1, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(250, 850), breaks = seq(250, 850, 100), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -475,7 +488,7 @@ plot.ADD.stand <- ggplot(hatch.ADD.summary.stand, aes(x = group, y = mean.ADD.di
   scale_y_continuous(limits = c(0.0, 205), breaks = seq(80, 200, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   coord_cartesian(ylim = c(80, 205)) +
-  labs(y = "Standardized ADD (%)", x = "Population") +
+  labs(y = "Standardized ADD (%)", x = "Study Group") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
@@ -520,5 +533,5 @@ plot.all <- grid.arrange(
   heights = c(0.035, 1.1)
 )
 
-ggsave("figures/2020-Embryo-LHT-SE-noLine.png", plot = plot.all, width = 18, height = 18, dpi = 200)
+ggsave("figures/2020-Embryo-LHT-SE.tiff", plot = plot.all, width = 18, height = 18, dpi = 200)
 

@@ -13,3 +13,12 @@ README.html
 
 # Ignore files too large to push
 data/PhenoVar_Bootstrap/
+figures/2019
+figures/adult
+figures/correlations
+figures/misc
+figures/presentation
+figures/sdr
+scripts/misc
+scripts/2019
+

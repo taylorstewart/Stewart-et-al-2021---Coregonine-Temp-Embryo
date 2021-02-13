@@ -153,24 +153,6 @@ mixed(larval.yolk.finland.glm.formula, data = larval.finland.yolk, method = "LRT
 rand(larval.yolk.finland.glm.final)
 
 
-# STATISTICAL ANALYSIS - YOLK-SAC VOLUME - WHITEFISH --------------------------------------------
-
-## fit full model
-larval.yolk.whitefish.glm.full <- lmer(y_vol_mm3 ~ 1 + temperature + (1|family) + (1|male) + (1|female) + (1|block), 
-                                     data = larval.whitefish)
-
-## backward elimination to select best model
-larval.yolk.whitefish.glm <- step(larval.yolk.whitefish.glm.full)
-( larval.yolk.whitefish.glm.formula <- get_model(larval.yolk.whitefish.glm)@call[["formula"]])
-
-## fit best model
-larval.yolk.whitefish.glm.final <- lmer(larval.yolk.whitefish.glm.formula, data = larval.whitefish)
-
-## likelihood ratio test for fixed and random effects
-mixed(larval.yolk.whitefish.glm.formula, data = larval.whitefish, method = "LRT")
-rand(larval.yolk.whitefish.glm.final)
-
-
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
 
 temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK-Whitefish",
@@ -185,7 +167,9 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
 larval.tl.summary <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.tl = mean(length_mm),
-            se.tl = sd(length_mm)/sqrt(n())) %>% ungroup()
+            se.tl = sd(length_mm)/sqrt(n())) %>% ungroup() %>% 
+  group_by(temperature) %>% 
+  mutate(width = 0.15 * n())
 
 ## Length-at-Hatch - Standardized Within Family
 larval.tl.summary.family <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
@@ -210,7 +194,9 @@ larval.tl.summary.stand <- larval.tl.summary.family %>% left_join(larval.tl.stan
 larval.yolk.summary <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0) %>% 
   group_by(population, temperature, group) %>% 
   summarize(mean.yolk = mean(y_vol_mm3),
-            se.yolk = sd(y_vol_mm3)/sqrt(n())) %>% ungroup()
+            se.yolk = sd(y_vol_mm3)/sqrt(n())) %>% ungroup() %>% 
+  group_by(temperature) %>% 
+  mutate(width = 0.15 * n())
 
 ## Yolk-sac Volume - Standardized Within Family
 larval.yolk.summary.family <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0) %>% 
@@ -235,12 +221,13 @@ larval.yolk.summary.stand <- larval.yolk.summary.family %>% left_join(larval.yol
 #### VISUALIZATIONS ----------------------------------------------------------
 
 ## Length-at-Hatch
-plot.tl <- ggplot(larval.tl.summary, aes(x = temperature, y = mean.tl, group = group, color = group, shape = group, linetype = group)) + 
-  #geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 3.25, position = position_dodge(0.13)) +
+plot.tl <- ggplot(larval.tl.summary, aes(x = temperature, y = mean.tl, 
+                                         group = group, color = group, shape = group, 
+                                         linetype = group, width = width)) + 
+  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  geom_point(size = 3.25, position = position_dodge(0.13), stroke = 1.5) +
   geom_errorbar(aes(ymin = mean.tl - se.tl, ymax = mean.tl + se.tl), 
-                position = position_dodge(0.1),
-                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+                position = position_dodge(0.1), size = 1, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(6.5, 12), breaks = seq(7, 12, 1), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -269,8 +256,8 @@ plot.tl.stand <- ggplot(larval.tl.summary.stand, aes(x = group, y = mean.tl.diff
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 103), breaks = seq(0.0, 100, 10), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
-  coord_cartesian(ylim = c(60, 103)) +
-  labs(y = "Standardized LAH (%)", x = "Population") +
+  coord_cartesian(ylim = c(80, 103)) +
+  labs(y = "Standardized LAH (%)", x = "Study Groups") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
@@ -284,12 +271,13 @@ plot.tl.stand <- ggplot(larval.tl.summary.stand, aes(x = group, y = mean.tl.diff
         plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
 
 ## Yolk-sac Volume
-plot.yolk <- ggplot(larval.yolk.summary, aes(x = temperature, y = mean.yolk, group = group, color = group, shape = group, linetype = group)) + 
-  #geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 3.25, position = position_dodge(0.13)) +
+plot.yolk <- ggplot(larval.yolk.summary, aes(x = temperature, y = mean.yolk, 
+                                             group = group, color = group, shape = group, 
+                                             linetype = group, width = width)) + 
+  geom_line(size = 1.0, position = position_dodge(0.13)) +
+  geom_point(size = 3.25, position = position_dodge(0.13), stroke = 1.5) +
   geom_errorbar(aes(ymin = mean.yolk - se.yolk, ymax = mean.yolk + se.yolk), 
-                position = position_dodge(0.13),
-                size = 0.8, width = 0.2, linetype = "solid", show.legend = FALSE) +
+                position = position_dodge(0.13), size = 1, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 1.45), breaks = seq(0, 1.4, 0.2), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
@@ -319,7 +307,7 @@ plot.yolk.stand <- ggplot(larval.yolk.summary.stand, aes(x = group, y = mean.yol
   scale_y_continuous(limits = c(0.0, 650), breaks = seq(100, 650, 50), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   coord_cartesian(ylim = c(80, 650)) +
-  labs(y = "Standardized YSV (%)", x = "Population") +
+  labs(y = "Standardized YSV (%)", x = "Study Groups") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
         axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
@@ -362,5 +350,5 @@ plot.all <- grid.arrange(
   heights = c(0.04, 1.1)
 )
 
-ggsave("figures/2020-Larval-MT-SE-noLine.png", plot = plot.all, width = 18, height = 14, dpi = 300)
+ggsave("figures/2020-Larval-MT-SE.tiff", plot = plot.all, width = 18, height = 14, dpi = 300)
 
