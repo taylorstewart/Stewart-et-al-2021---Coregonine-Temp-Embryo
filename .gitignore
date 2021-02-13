@@ -13,6 +13,11 @@ README.html
 
 # Ignore files too large to push
 data/PhenoVar_Bootstrap/
+data/Datasheet_Scans
+data/HOBO
+data/Mock_Temperature
+data/SDR_Oxygen
+data/Winter_Lake_Temperature
 figures/2019
 figures/adult
 figures/correlations
