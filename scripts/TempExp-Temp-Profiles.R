@@ -148,5 +148,5 @@ ggplot(temp, aes(x = date, y = temp.c, group = lake)) +
         strip.background = element_rect(fill = "white"), 
         plot.margin = unit(c(2, 5, 5, 5), "mm"))
 
-ggsave("figures/Temp-Profiles.tiff", width = 12, height = 7, dpi = 300)
+ggsave("figures/bioRxiv/Temp-Profiles.png", width = 12, height = 7, dpi = 300)
 
