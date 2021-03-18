@@ -91,18 +91,18 @@ plot <- ggplot(data = temp, aes(x = date, y = mean.sst, group = group, color = g
   annotate("rect", xmin = temp.hatch.n$hatch.start, xmax = temp.hatch.n$hatch.end, ymin = 4, ymax = 5, color = NA, fill = "#67a9cf", alpha = 0.4) +
   annotate("rect", xmin = temp.hatch.h$hatch.start, xmax = temp.hatch.h$hatch.end, ymin = 4, ymax = 5, color = NA, fill = "#ef8a62", alpha = 0.4) +
   ## Blue Label
-  geom_segment(y = 6.6, x = temp.spawn.n$mean.date, yend = 5.1, xend = temp.spawn.n$mean.date, size = 1.5, color = "#67a9cf", arrow = arrow()) +
-  geom_segment(y = 6.6, x = temp.hatch.n$mean.date, yend = 5.1, xend = temp.hatch.n$mean.date, size = 1.5, color = "#67a9cf", arrow = arrow()) +
-  geom_segment(y = 6.6, x = temp.spawn.n$mean.date-(15*60*60), yend = 6.6, xend = as.POSIXct("2018-01-17"), size = 1.5, color = "#67a9cf") +
-  geom_segment(y = 6.6, x = temp.hatch.n$mean.date+(15*60*60), yend = 6.6, xend = as.POSIXct("2018-03-15"), size = 1.5, color = "#67a9cf") +
-  annotate("text", x = as.POSIXct("2018-02-14"), y = 6.6, label = "182 Days Incubation", color = "#67a9cf", size = 5, hjust = 0.5) +
+  geom_segment(y = 6.6, x = temp.spawn.n$mean.date, yend = 5.1, xend = temp.spawn.n$mean.date, size = 1.1, color = "#67a9cf", arrow = arrow(length = unit(0.3, "cm"))) +
+  geom_segment(y = 6.6, x = temp.hatch.n$mean.date, yend = 5.1, xend = temp.hatch.n$mean.date, size = 1.1, color = "#67a9cf", arrow = arrow(length = unit(0.3, "cm"))) +
+  geom_segment(y = 6.6, x = temp.spawn.n$mean.date-(15*60*60), yend = 6.6, xend = as.POSIXct("2018-01-17"), size = 1.1, color = "#67a9cf") +
+  geom_segment(y = 6.6, x = temp.hatch.n$mean.date+(15*60*60), yend = 6.6, xend = as.POSIXct("2018-03-15"), size = 1.1, color = "#67a9cf") +
+  annotate("text", x = as.POSIXct("2018-02-14"), y = 6.6, label = "182 Days Incubation", color = "#67a9cf", size = 3.8, hjust = 0.5) +
   ## Orange Label
-  geom_segment(y = 6, x = temp.spawn.h$mean.date, yend = 5.1, xend = temp.spawn.h$mean.date, size = 1.5, color = "#ef8a62", arrow = arrow()) +
-  geom_segment(y = 6, x = temp.hatch.h$mean.date, yend = 5.1, xend = temp.hatch.h$mean.date, size = 1.5, color = "#ef8a62", arrow = arrow()) +
-  geom_segment(y = 6, x = temp.spawn.h$mean.date-(15*60*60), yend = 6, xend = as.POSIXct("2018-01-17"), size = 1.5, color = "#ef8a62") +
-  geom_segment(y = 6, x = temp.hatch.h$mean.date+(15*60*60), yend = 6, xend = as.POSIXct("2018-03-15"), size = 1.5, color = "#ef8a62") +
-  annotate("text", x = as.POSIXct("2018-02-14"), y = 6, label = "101 Days Incubation", color = "#ef8a62", size = 5, hjust = 0.5) +
-  geom_line(size = 1.25) +
+  geom_segment(y = 6, x = temp.spawn.h$mean.date, yend = 5.1, xend = temp.spawn.h$mean.date, size = 1.1, color = "#ef8a62", arrow = arrow(length = unit(0.3, "cm"))) +
+  geom_segment(y = 6, x = temp.hatch.h$mean.date, yend = 5.1, xend = temp.hatch.h$mean.date, size = 1.1, color = "#ef8a62", arrow = arrow(length = unit(0.3, "cm"))) +
+  geom_segment(y = 6, x = temp.spawn.h$mean.date-(15*60*60), yend = 6, xend = as.POSIXct("2018-01-17"), size = 1.1, color = "#ef8a62") +
+  geom_segment(y = 6, x = temp.hatch.h$mean.date+(15*60*60), yend = 6, xend = as.POSIXct("2018-03-15"), size = 1.1, color = "#ef8a62") +
+  annotate("text", x = as.POSIXct("2018-02-14"), y = 6, label = "101 Days Incubation", color = "#ef8a62", size = 3.8, hjust = 0.5) +
+  geom_line(size = 1.0) +
   geom_hline(yintercept = 5, alpha = 0.2) +
   geom_hline(yintercept = 4, alpha = 0.2) +
   scale_x_datetime(date_labels = "%m", date_breaks = "1 month", expand = c(0.0001,0.0)) +
@@ -113,18 +113,18 @@ plot <- ggplot(data = temp, aes(x = date, y = mean.sst, group = group, color = g
   theme(panel.background = element_blank(), 
         panel.grid = element_blank(), 
         axis.line = element_line(), 
-        axis.title.y = element_text(size = 20, margin = margin(0, 10, 0, 0)),
-        axis.title.x = element_text(size = 20, margin = margin(10, 0, 0, 0)),
-        axis.text.y = element_text(size = 17),
-        axis.text.x = element_text(size = 17),
-        axis.ticks.length = unit(2, 'mm'),
+        axis.title.y = element_text(size = 15.2, margin = margin(0, 7.6, 0, 0)),
+        axis.title.x = element_text(size = 15.2, margin = margin(7.6, 0, 0, 0)),
+        axis.text.y = element_text(size = 12.9),
+        axis.text.x = element_text(size = 12.9),
+        axis.ticks.length = unit(1.5, 'mm'),
         legend.key = element_rect(fill = "white"), 
-        legend.key.width = unit(3, 'lines'), 
-        legend.key.height = unit(1.2, 'lines'),
-        legend.title = element_text(size = 15),
-        legend.text = element_text(size = 15), 
+        legend.key.width = unit(2.3, 'lines'), 
+        legend.key.height = unit(0.9, 'lines'),
+        legend.title = element_text(size = 11.4),
+        legend.text = element_text(size = 11.4), 
         legend.position = c(0.12, 0.9),
-        plot.margin = unit(c(5, 10, 2, 2), "mm"))
+        plot.margin = unit(c(3.8, 7.6, 1.5, 1.5), "mm"))
 
 ggdraw() +
   draw_image("figures/misc/egg_blue.png", x = -0.35, y = -0.075, scale = 0.1) +
@@ -133,5 +133,5 @@ ggdraw() +
   draw_image("figures/misc/larvae_orange.png", x = 0.26, y = -0.053, scale = 0.08) +
   draw_plot(plot)
 
-ggsave("figures/bioRxiv/Mock-IncubationTemperature.png", height = 6, width = 9, dpi = 300)
+ggsave("figures/Fig6.tiff", height = 4.6, width = 6.9, dpi = 600)
 

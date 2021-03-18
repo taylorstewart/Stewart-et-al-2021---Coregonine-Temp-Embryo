@@ -58,7 +58,7 @@ larval.finland.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, grou
   filter(include.yolk == "y")
 
 ## Clean up environment
-#rm(larval.lo, larval.ls, larval.lk)
+rm(larval.lo, larval.ls, larval.lk)
 
 
 #### STATISTICAL ANALYSIS - LENGTH-AT-HATCH - CISCO ----------------------------------------------
@@ -160,8 +160,8 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
                              "LS-Cisco", "LS-Cisco", "LS-Cisco", "LS-Cisco",
                              "LO-Cisco", "LO-Cisco", "LO-Cisco", "LO-Cisco"),
                    temperature = c(rep(c(2.2, 4.0, 6.9, 8.0),2), rep(c(2.0, 4.4, 6.9, 8.9),2)),
-                   temp.treatment = factor(rep(c("Coldest ", "Cold ", "Warm ", "Warmest"), 4), 
-                                           ordered = TRUE, levels = c("Coldest ", "Cold ", "Warm ", "Warmest")))
+                   temp.treatment = factor(rep(c("Coldest", "Cold", "Warm", "Warmest"), 4), 
+                                           ordered = TRUE, levels = c("Coldest", "Cold", "Warm", "Warmest")))
 
 ## Length-at-Hatch - Overall
 larval.tl.summary <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
@@ -224,101 +224,115 @@ larval.yolk.summary.stand <- larval.yolk.summary.family %>% left_join(larval.yol
 plot.tl <- ggplot(larval.tl.summary, aes(x = temperature, y = mean.tl, 
                                          group = group, color = group, shape = group, 
                                          linetype = group, width = width)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 3.25, position = position_dodge(0.13), stroke = 1.5) +
+  geom_line(size = 0.4, position = position_dodge(0.13)) +
+  geom_point(size = 1.2, position = position_dodge(0.13), stroke = 0.6) +
   geom_errorbar(aes(ymin = mean.tl - se.tl, ymax = mean.tl + se.tl), 
-                position = position_dodge(0.1), size = 1, linetype = "solid", show.legend = FALSE) +
+                position = position_dodge(0.1), size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(6.5, 12), breaks = seq(7, 12, 1), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
-                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                   labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                     labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                        labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   labs(y = "Mean LAH (mm)", color = "Populations") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.9),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.5, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized LAH
 plot.tl.stand <- ggplot(larval.tl.summary.stand, aes(x = group, y = mean.tl.diff, group = temp.treatment, fill = temp.treatment)) + 
-  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = (mean.tl.diff - se.tl.diff), ymax = (mean.tl.diff + se.tl.diff)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 103), breaks = seq(0.0, 100, 10), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   coord_cartesian(ylim = c(80, 103)) +
   labs(y = "Standardized LAH (%)", x = "Study Groups") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.5),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.4, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm')) 
 
 ## Yolk-sac Volume
 plot.yolk <- ggplot(larval.yolk.summary, aes(x = temperature, y = mean.yolk, 
                                              group = group, color = group, shape = group, 
                                              linetype = group, width = width)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 3.25, position = position_dodge(0.13), stroke = 1.5) +
+  geom_line(size = 0.4, position = position_dodge(0.13)) +
+  geom_point(size = 1.2, position = position_dodge(0.13), stroke = 0.6) +
   geom_errorbar(aes(ymin = mean.yolk - se.yolk, ymax = mean.yolk + se.yolk), 
-                position = position_dodge(0.13), size = 1, linetype = "solid", show.legend = FALSE) +
+                position = position_dodge(0.13), size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 1.45), breaks = seq(0, 1.4, 0.2), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
-                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                   labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                     labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                        labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   labs(y = expression("Mean YSV (mm"^3*")")) +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 7, 0, -12)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.9),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.5, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized YSV
 plot.yolk.stand <- ggplot(larval.yolk.summary.stand, aes(x = group, y = mean.yolk.diff, group = temp.treatment, fill = temp.treatment)) + 
-  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = (mean.yolk.diff - se.yolk.diff), ymax = (mean.yolk.diff + se.yolk.diff)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 650), breaks = seq(100, 650, 50), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   coord_cartesian(ylim = c(80, 650)) +
   labs(y = "Standardized YSV (%)", x = "Study Groups") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.5),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.4, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm')) 
 
 
 ## Combine all figures
@@ -339,16 +353,16 @@ plot.all <- grid.arrange(
     arrangeGrob(plot.tl + theme(legend.position = "none", axis.title.x = element_blank()),
                 plot.yolk + theme(legend.position = "none", axis.title.x = element_blank()),
                 nrow = 2,
-                bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 0.8, fontfamily = "Arial"))),
     arrangeGrob(plot.tl.stand + theme(legend.position = "none", axis.title.x = element_blank()), 
                 plot.yolk.stand + theme(legend.position = "none", axis.title.x = element_blank()),
                 nrow = 2,
-                bottom = textGrob("Study Group", x = 0.55, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                bottom = textGrob("Study Group", x = 0.55, gp = gpar(cex = 0.8, fontfamily = "Arial"))),
     ncol = 2,
     widths = c(1, 0.7)
   ),
   heights = c(0.04, 1.1)
 )
 
-ggsave("figures/bioRxiv/2020-Larval-MT-SE.png", plot = plot.all, width = 18, height = 14, dpi = 300)
+ggsave("figures/Fig5-scaled.tiff", plot = plot.all, width = 6.9, height = 5.3, dpi = 600)
 

@@ -120,9 +120,9 @@ temp <- bind_rows(temp.ls, temp.lo, temp.lk) %>%
 ## Plot time-series
 ## ===========================================================
 ggplot(temp, aes(x = date, y = temp.c, group = lake)) +
-  geom_path(size = 1.75, aes(color = lake)) +
-  geom_point(data = temp.spawn, aes(x = date, y = temp.c, group = lake), size = 5, shape = 4, stroke = 2, show.legend = FALSE) +
-  geom_point(data = temp.hatch, aes(x = date, y = temp.c, group = lake), size = 5, shape = 1, stroke = 2, show.legend = FALSE) +
+  geom_path(size = 0.96, aes(color = lake)) +
+  geom_point(data = temp.spawn, aes(x = date, y = temp.c, group = lake), size = 2.73, shape = 4, stroke = 1.09, show.legend = FALSE) +
+  geom_point(data = temp.hatch, aes(x = date, y = temp.c, group = lake), size = 2.73, shape = 1, stroke = 1.09, show.legend = FALSE) +
   #geom_hline(yintercept = 2, linetype = "dashed", color = "gray50") +
   #geom_hline(yintercept = 4.5, linetype = "dashed", color = "gray50") +
   #geom_hline(yintercept = 7, linetype = "dashed", color = "gray50") +
@@ -135,18 +135,20 @@ ggplot(temp, aes(x = date, y = temp.c, group = lake)) +
   #guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
   theme(panel.background = element_blank(), 
         panel.grid = element_blank(), 
-        axis.line = element_line(), 
-        axis.text = element_text(size = 17),
-        axis.title.x = element_text(size = 20, margin = margin(10, 0, 0, 0)), 
-        axis.title.y = element_text(size = 20, margin = margin(0, 10, 0, 0)), 
-        axis.ticks.length = unit(2.5, 'mm'),
+        axis.line = element_line(size = 0.27), 
+        axis.text = element_text(size = 9),
+        axis.title.x = element_text(size = 11, margin = margin(5.46, 0, 0, 0)), 
+        axis.title.y = element_text(size = 11, margin = margin(0, 5.46, 0, 0)), 
+        axis.ticks.length = unit(1.37, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.position = "top", 
-        legend.text = element_text(size = 17),
+        legend.text = element_text(size = 9),
         legend.title = element_blank(), 
-        legend.key.size = unit(2, 'lines'),
+        legend.key.width = unit(1.09, 'lines'),
         legend.key = element_rect(fill = "white"), 
+        legend.margin = margin(0, 0, 0, 0, unit = 'mm'),
         strip.background = element_rect(fill = "white"), 
-        plot.margin = unit(c(2, 5, 5, 5), "mm"))
+        plot.margin = unit(c(1.09, 2.73, 2.73, 2.73), "mm"))
 
-ggsave("figures/bioRxiv/Temp-Profiles.png", width = 12, height = 7, dpi = 300)
+ggsave("figures/Fig2.tiff", width = 6.5, height = 3.8, dpi = 600)
 

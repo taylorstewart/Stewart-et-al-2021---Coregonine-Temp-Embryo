@@ -247,9 +247,6 @@ hist(rstudent(hatch.ADD.finland.glm.final))
 mixed(hatch.ADD.finland.glm.formula, data = hatch.ADD.finland, method = "LRT")
 rand(hatch.ADD.finland.glm.final)
 
-## Calculate estimated marginal means - be very patient!
-hatch.ADD.finland.glm.emm <- emmeans(hatch.ADD.finland.glm.final, ~ temperature)
-
 
 #### CALCULATE MEAN AND SE FOR NA & FI POPULATIONS -----------------------------------------------
 
@@ -258,8 +255,8 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
                              "LS-Cisco", "LS-Cisco", "LS-Cisco", "LS-Cisco",
                              "LO-Cisco", "LO-Cisco", "LO-Cisco", "LO-Cisco"),
                    temperature = c(rep(c(2.2, 4.0, 6.9, 8.0),2), rep(c(2.0, 4.4, 6.9, 8.9),2)),
-                   temp.treatment = factor(rep(c("Coldest ", "Cold ", "Warm ", "Warmest"), 4), 
-                                           ordered = TRUE, levels = c("Coldest ", "Cold ", "Warm ", "Warmest")))
+                   temp.treatment = factor(rep(c("Coldest", "Cold", "Warm", "Warmest"), 4), 
+                                           ordered = TRUE, levels = c("Coldest", "Cold", "Warm", "Warmest")))
 
 ## Embryo Survival Overall
 hatch.survival.summary <- hatch %>% filter(eye != 0) %>% 
@@ -350,156 +347,180 @@ hatch.ADD.summary.stand <- hatch.ADD.summary.family %>% left_join(hatch.ADD.stan
 plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), 
                                                     group = group, color = group, shape = group, 
                                                     linetype = group, width = width)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
+  geom_line(size = 0.4, position = position_dodge(0.13)) +
+  geom_point(size = 1.9, position = position_dodge(0.13), stroke = 0.6) +
   geom_errorbar(aes(ymin = (mean.hatch - se.hatch) * 100, ymax = (mean.hatch + se.hatch) * 100), 
                 position = position_dodge(0.13),
-                size = 1, linetype = "solid", show.legend = FALSE) +
+                size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0, 105), breaks = seq(0, 100, 25), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
-                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                   labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                     labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                        labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   labs(y = "Mean Embryo Survival (%)", x = "Temperature (°C)") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.9),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.5, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized Survival
 plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = mean.survival.diff, group = temp.treatment, fill = temp.treatment)) + 
-  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = (mean.survival.diff - se.survival.diff), ymax = (mean.survival.diff + se.survival.diff)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 105), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   labs(y = "Standardized Survival (%)", x = "Study Group") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.5),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.4, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm')) 
 
 
 ## Days Post Fertilization
 plot.dpf <- ggplot(hatch.dpf.summary, aes(x = temperature, y = mean.dpf, 
                                           group = group, color = group, shape = group, 
                                           linetype = group, width = width)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
+  geom_line(size = 0.4, position = position_dodge(0.13)) +
+  geom_point(size = 1.9, position = position_dodge(0.13), stroke = 0.6) +
   geom_errorbar(aes(ymin = mean.dpf - se.dpf, ymax = mean.dpf + se.dpf), 
                 position = position_dodge(0.13),
-                size = 1, linetype = "solid", show.legend = FALSE) +
+                size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(30, 225), breaks = seq(50, 225, 25), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
-                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                   labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                     labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                        labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   labs(y = "Mean DPF") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.9),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.width = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.5, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized DPF
 plot.dpf.stand <- ggplot(hatch.dpf.summary.stand, aes(x = group, y = mean.dpf.diff, group = temp.treatment, fill = temp.treatment)) + 
-  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = (mean.dpf.diff - se.dpf.diff), ymax = (mean.dpf.diff + se.dpf.diff)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 102), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   labs(y = "Standardized DPF (%)", x = "Study Group") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.5),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.4, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm')) 
 
 ## Accumulated Degree-Days
 plot.ADD <- ggplot(hatch.ADD.summary, aes(x = temperature, y = mean.ADD, 
                                           group = group, color = group, shape = group, 
                                           linetype = group, width = width)) + 
-  geom_line(size = 1.0, position = position_dodge(0.13)) +
-  geom_point(size = 5, position = position_dodge(0.13), stroke = 1.5) +
+  geom_line(size = 0.4, position = position_dodge(0.13)) +
+  geom_point(size = 1.9, position = position_dodge(0.13), stroke = 0.6) +
   geom_errorbar(aes(ymin = mean.ADD - se.ADD, ymax = mean.ADD + se.ADD), 
                 position = position_dodge(0.13),
-                size = 1, linetype = "solid", show.legend = FALSE) +
+                size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(250, 850), breaks = seq(250, 850, 100), expand = c(0, 0)) +
   scale_color_grey("combine", start = 0.0, end = 0.8,
-                   labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                   labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_shape_manual("combine", values = c(2, 5, 1, 0), 
-                     labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                     labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   scale_linetype_manual("combine", values = c("solid", "dashed", "dotted", "solid"), 
-                        labels = c("LK-Vendace   ", "LK-Whitefish   ", "LS-Cisco   ", "LO-Cisco")) +
+                        labels = c("LK-Vendace ", "LK-Whitefish ", "LS-Cisco ", "LO-Cisco")) +
   labs(y = "Mean ADD") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.9),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.5, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm'))
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized ADD
 plot.ADD.stand <- ggplot(hatch.ADD.summary.stand, aes(x = group, y = mean.ADD.diff, group = temp.treatment, fill = temp.treatment)) + 
-  geom_bar(stat = "identity", size = 0.5, position = position_dodge(0.9), color = "black") +
+  geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
   geom_errorbar(aes(ymin = (mean.ADD.diff - se.ADD.diff), ymax = (mean.ADD.diff + se.ADD.diff)), 
-                position = position_dodge(0.9), size = 0.8, width = 0.4, show.legend = FALSE) +
+                position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 205), breaks = seq(80, 200, 20), expand = c(0, 0)) +
   scale_fill_manual(values = c("#0571b0", "#92c5de", "#f4a582", "#ca0020")) +
   coord_cartesian(ylim = c(80, 205)) +
   labs(y = "Standardized ADD (%)", x = "Study Group") +
   theme_bw() +
-  theme(axis.title.x = element_text(color = "Black", size = 22, margin = margin(10, 0, 0, 0)),
-        axis.title.y = element_text(color = "Black", size = 22, margin = margin(0, 10, 0, 0)),
-        axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.ticks.length = unit(2, 'mm'),
+  theme(panel.grid.minor = element_line(size = 0.27), 
+        panel.grid.major = element_line(size = 0.27),
+        axis.line = element_line(size = 0.1), 
+        axis.title.x = element_text(color = "Black", size = 8.4, margin = margin(3.8, 0, 0, 0)),
+        axis.title.y = element_text(color = "Black", size = 8.4, margin = margin(0, 3.8, 0, 0)),
+        axis.text.x = element_text(size = 6.5),
+        axis.text.y = element_text(size = 6.9),
+        axis.ticks.length = unit(0.8, 'mm'),
+        axis.ticks = element_line(size = 0.27), 
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.key.size = unit(1.25, 'cm'),
+        legend.text = element_text(size = 7.6),
+        legend.key.size = unit(0.4, 'cm'),
         legend.position = "top",
-        plot.margin = unit(c(5, 5, 5, 5), 'mm')) 
+        plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm')) 
 
 
 ## Combine all figures
@@ -521,17 +542,17 @@ plot.all <- grid.arrange(
                 plot.dpf + theme(legend.position = "none", axis.title.x = element_blank()),
                 plot.ADD + theme(legend.position = "none", axis.title.x = element_blank()),
                 nrow = 3,
-                bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                bottom = textGrob("Mean Incubation Temperature (°C)", x = 0.545, gp = gpar(cex = 0.8, fontfamily = "Arial"))),
     arrangeGrob(plot.survival.stand + theme(legend.position = "none", axis.title.x = element_blank()), 
                 plot.dpf.stand + theme(legend.position = "none", axis.title.x = element_blank()),
                 plot.ADD.stand + theme(legend.position = "none", axis.title.x = element_blank()),
                 nrow = 3,
-                bottom = textGrob("Study Group", x = 0.55, gp = gpar(cex = 2, fontfamily = "Arial"))),
+                bottom = textGrob("Study Group", x = 0.55, gp = gpar(cex = 0.8, fontfamily = "Arial"))),
     ncol = 2,
     widths = c(1, 0.7)
     ),
   heights = c(0.035, 1.1)
 )
 
-ggsave("figures/bioRxiv/2020-Embryo-LHT-SE.png", plot = plot.all, width = 18, height = 18, dpi = 300)
+ggsave("figures/Fig3.tiff", plot = plot.all, width = 6.9, height = 6.9, dpi = 600)
 
