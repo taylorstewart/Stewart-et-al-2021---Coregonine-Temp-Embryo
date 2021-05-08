@@ -35,11 +35,11 @@ hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", s
          hatch = as.numeric(hatch)) %>% 
   filter(!is.na(eye), !is.na(hatch)) %>% 
   left_join(ADD) %>% 
-  dplyr::select(population, latitude, species, male, female, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
+  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
 
 hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "2019HatchingData") %>% 
   mutate(premature = 0) %>% 
-  dplyr::select(population, latitude, species, male, female, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
+  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
 
 ## Combine all populations and years
 hatch <- bind_rows(hatch.NA, hatch.FI) %>% 

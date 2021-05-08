@@ -84,14 +84,14 @@ slope.data <- data.frame(group = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO
 
 ggplot(larval.all, aes(x = trans.yolk, y = trans.tl, group = group, color = group, shape = temp.treatment)) +
   geom_point(size = 3) +
-  #geom_hline(data = larval.tl.max, aes(yintercept = max.tl, color = group), linetype = "dashed") +
+  geom_hline(data = larval.tl.max, aes(yintercept = max.tl, color = group), linetype = "dashed") +
   geom_smooth(method = "lm", se = FALSE) +
   scale_color_manual(name = "Study Groups", values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c")) +
   scale_shape_manual(name = "Temperature Treatment", values = c(15, 16, 17, 3)) +
   scale_y_continuous(limits = c(1.9, 2.5), breaks = seq(1.9, 2.5, 0.1), expand = c(0, 0)) +
   scale_x_continuous(limits = c(-3, 0.5), breaks = seq(-3, 0.5, 0.5), expand = c(0, 0)) +
-  #annotate(geom = "table", x = -2.9, y = 2.475, label = list(slope.data), size = 5,
-  #         vjust = 1, hjust = 0, table.colnames = FALSE, table.theme = ttheme_gtminimal) +
+  annotate(geom = "table", x = -2.9, y = 2.475, label = list(slope.data), size = 5,
+           vjust = 1, hjust = 0, table.colnames = FALSE, table.theme = ttheme_gtminimal) +
   labs(x = "Log Yolk-sac Volume", y = "Log Total Length") +
   theme_bw() +
   theme(axis.title.x = element_text(color = "Black", size = 20, margin = margin(10, 0, 0, 0)),

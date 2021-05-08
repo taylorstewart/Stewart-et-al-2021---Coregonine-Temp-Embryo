@@ -34,7 +34,7 @@ plot.phenoVar <- ggplot(mapping = aes(x = group, y = variance, group = component
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20), expand = c(0, 0)) +
   scale_x_discrete(expand = c(0, 0.5)) +
   scale_fill_manual(values = c("#7bccc4", "#f0f9e8", "#bae4bc", "#2b8cbe"),
-                    labels = c("Female  ", "Male  ", "Female x Male  ", "Error")) +
+                    labels = c("Female  ", "Male  ", "Female x Male  ", "Residual Error")) +
   #annotation_custom(textGrob("Coldest-Cold-Warm-Warmest", gp = gpar(fontsize = 15, col = "grey30")), 
   #                  xmin = 2, xmax = 2, ymin = -7.5, ymax = -7.5) +
   coord_cartesian(clip = "off") +
