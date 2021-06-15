@@ -14,7 +14,7 @@ library(parallel)
 
 #### LOAD INCUBATION TEMPERATURE DATA ------------------------------------------------------------
 
-ADD <- read.csv("data/Artedi-Temperature-ADD-2020.csv", header = TRUE) %>% 
+ADD <- read.csv("data/Coregonine-Temperature-Experiment-NA-ADD.csv", header = TRUE) %>% 
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
