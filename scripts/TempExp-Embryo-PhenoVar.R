@@ -14,7 +14,7 @@ library(parallel)
 
 #### LOAD INCUBATION TEMPERATURE DATA ------------------------------------------------------------
 
-ADD <- read.csv("data/Coregonine-Temperature-Experiment-NA-ADD.csv", header = TRUE) %>% 
+ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "temperature") %>% 
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
@@ -22,7 +22,7 @@ ADD <- read.csv("data/Coregonine-Temperature-Experiment-NA-ADD.csv", header = TR
 
 #### LOAD HATCHING DATA --------------------------------------------------------------------------
 
-hatch.USA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "2020HatchingData") %>% 
+hatch.USA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "hatching") %>% 
   filter(is.na(notes) | notes != "empty well") %>% 
   filter(block != "A" | population != "superior") %>% 
   mutate(eye = as.numeric(eye),
@@ -31,7 +31,7 @@ hatch.USA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", 
   left_join(ADD) %>% 
   dplyr::select(population, species, family, male, female, block, temperature, eye, hatch, dpf, ADD)
 
-hatch.Finland <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "2019HatchingData") %>% 
+hatch.Finland <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "hatching") %>% 
   mutate(premature = 0) %>% 
   dplyr::select(population, species, family, male, female, block, temperature, eye, hatch, dpf, ADD)
 
