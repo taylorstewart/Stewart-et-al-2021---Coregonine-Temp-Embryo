@@ -10,7 +10,7 @@ library(ggplot2)
 library(emmeans)
 
 #### Load embryo diameter data -----------------------------------------------
-data <- read_excel("data/Coregonine-Temperature-Experiment-EmbryoMeasurements.xlsx", sheet = "Data") %>% 
+data <- read_excel("data/Coregonine-Temperature-Experiment-EggMeasurements.xlsx", sheet = "egg_diameter_mm", skip = 35) %>% 
   mutate(female = factor(female),
          population = factor(population, levels = c("konnevesi", "superior", "ontario"))) %>% 
   filter(fert_success == "y")

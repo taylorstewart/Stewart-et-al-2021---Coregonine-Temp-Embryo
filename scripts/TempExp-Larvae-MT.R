@@ -20,9 +20,9 @@ library(cowplot)
 
 #### LOAD LARVAL LENGTH DATA ---------------------------------------------------------------------
 
-larval.lk <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LK-Larvae")
-larval.ls <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LS-Larvae")
-larval.lo <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LO-Larvae")
+larval.lk <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LK-Larvae", skip = 47)
+larval.ls <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LS-Larvae", skip = 53)
+larval.lo <- read_excel("data/Coregonine-Temperature-Experiment-LarvalMeasurements.xlsx", sheet = "LO-Larvae", skip = 53)
 
 # Combine each population, temperature, and species
 larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>% 
@@ -45,17 +45,17 @@ larval <- bind_rows(larval.lk, larval.ls, larval.lo) %>%
 ## filter to only length
 larval.cisco.tl <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
-  filter(include.tl == "y")
+  filter(include_tl == "y")
 larval.cisco.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
-  filter(include.yolk == "y")
+  filter(include_yolk == "y")
 
 larval.finland.tl <- larval %>% filter(!is.na(length_mm), length_mm != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
-  filter(include.tl == "y")
+  filter(include_tl == "y")
 larval.finland.yolk <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
-  filter(include.yolk == "y")
+  filter(include_yolk == "y")
 
 ## Clean up environment
 rm(larval.lo, larval.ls, larval.lk)

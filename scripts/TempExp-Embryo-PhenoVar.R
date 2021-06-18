@@ -14,7 +14,7 @@ library(parallel)
 
 #### LOAD INCUBATION TEMPERATURE DATA ------------------------------------------------------------
 
-ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "temperature") %>% 
+ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "temperature", skip = 31) %>% 
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
@@ -22,8 +22,7 @@ ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet 
 
 #### LOAD HATCHING DATA --------------------------------------------------------------------------
 
-hatch.USA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "hatching") %>% 
-  filter(is.na(notes) | notes != "empty well") %>% 
+hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "hatching", skip = 52) %>% 
   filter(block != "A" | population != "superior") %>% 
   mutate(eye = as.numeric(eye),
          hatch = as.numeric(hatch)) %>% 
@@ -31,12 +30,12 @@ hatch.USA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", 
   left_join(ADD) %>% 
   dplyr::select(population, species, family, male, female, block, temperature, eye, hatch, dpf, ADD)
 
-hatch.Finland <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "hatching") %>% 
+hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "hatching", skip = 48) %>% 
   mutate(premature = 0) %>% 
   dplyr::select(population, species, family, male, female, block, temperature, eye, hatch, dpf, ADD)
 
 ## Combine all populations and years
-hatch <- bind_rows(hatch.USA, hatch.Finland) %>% 
+hatch <- bind_rows(hatch.NA, hatch.FI) %>% 
   mutate(population = factor(population, levels = c("konnevesi", "superior", "ontario"), ordered = TRUE),
          temperature = factor(temperature, ordered = TRUE, 
                               levels = c(2, 2.2, 4.0, 4.4, 6.9, 8, 8.9),
@@ -53,7 +52,7 @@ hatch <- bind_rows(hatch.USA, hatch.Finland) %>%
   rename(sire = male, dam = female)
 
 ## Clean up environment
-rm(hatch.USA, hatch.Finland, ADD)
+rm(hatch.NA, hatch.FI, ADD)
 
 
 #### FILTER TO EACH TRAITS' DATASET --------------------------------------------------------------

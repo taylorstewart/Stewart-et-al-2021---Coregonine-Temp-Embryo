@@ -20,7 +20,7 @@ library(emmeans)
 
 #### LOAD INCUBATION TEMPERATURE DATA ----------------------------------------
 
-ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "temperature") %>% 
+ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "temperature", skip = 31) %>% 
   dplyr::select(population, temperature, ADD) %>% 
   group_by(population, temperature) %>% 
   mutate(dpf = 1:n())
@@ -28,18 +28,17 @@ ADD <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet 
 
 #### LOAD HATCHING DATA ------------------------------------------------------
 
-hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "hatching") %>% 
-  filter(is.na(notes) | notes != "empty well") %>% 
+hatch.NA <- read_excel("data/Coregonine-Temperature-Experiment-NA-Hatch.xlsx", sheet = "hatching", skip = 52) %>% 
   filter(block != "A" | population != "superior") %>% 
   mutate(eye = as.numeric(eye),
          hatch = as.numeric(hatch)) %>% 
   filter(!is.na(eye), !is.na(hatch)) %>% 
   left_join(ADD) %>% 
-  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
+  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, egg_id, temperature, eye, hatch, dpf, ADD, include_incubation)
 
-hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "hatching") %>% 
+hatch.FI <- read_excel("data/Coregonine-Temperature-Experiment-FI-Hatch.xlsx", sheet = "hatching", skip = 48) %>% 
   mutate(premature = 0) %>% 
-  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, no, temperature, eye, hatch, dpf, ADD, include.incubation)
+  dplyr::select(population, latitude, species, male, female, female_tl, female_fm, male_tl, male_fm, block, egg_id, temperature, eye, hatch, dpf, ADD, include_incubation)
 
 ## Combine all populations and years
 hatch <- bind_rows(hatch.NA, hatch.FI) %>% 
