@@ -1,7 +1,7 @@
 Coregonine (Great Lakes & Finland) Temperature Embryo Response Experiment
 ==========
 
-This repository contains data files, analysis scripts, and figures for the Great Lakes and Finland portions of the manuscript entitled *Influence of warming temperatures on coregonine embryogenesis within and among species*.
+This repository contains data files, analysis scripts, and figures for the Great Lakes and Finland portions of the manuscript entitled: *Influence of warming temperatures on coregonine embryogenesis within and among species*.
 
 
 # Data files
