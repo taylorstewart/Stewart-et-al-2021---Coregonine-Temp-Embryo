@@ -1,6 +1,6 @@
 #### CLEAR THE ENVIRONMENT FIRST -----------------------------------------------------------------
 
-rm(list = ls(all.names = TRUE))
+#rm(list = ls(all.names = TRUE))
 
 
 #### LOAD PACKAGES -------------------------------------------------------------------------------
@@ -166,10 +166,11 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
 ## Length-at-Hatch - Overall
 larval.tl.summary <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
   group_by(population, temperature, group) %>% 
-  summarize(mean.tl = mean(length_mm),
-            se.tl = sd(length_mm)/sqrt(n())) %>% ungroup() %>% 
+  summarize(mean.trait = mean(length_mm),
+            se.trait = sd(length_mm)/sqrt(n())) %>% ungroup() %>% 
   group_by(temperature) %>% 
-  mutate(width = 0.15 * n())
+  mutate(width = 0.15 * n(),
+         trait = "LAH")
 
 ## Length-at-Hatch - Standardized Within Family
 larval.tl.summary.family <- larval %>% filter(!is.na(length_mm), length_mm != 0) %>% 
@@ -183,20 +184,22 @@ larval.tl.summary.stand <- larval.tl.summary.family %>% left_join(larval.tl.stan
   filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
   mutate(tl.diff = 100*(1+(mean.tl-local.tl)/local.tl)) %>%
   group_by(population, temperature, group) %>% 
-  summarize(mean.tl.diff = mean(tl.diff),
-            se.tl.diff = sd(tl.diff)/sqrt(n())) %>% 
+  summarize(mean.trait.stand = mean(tl.diff),
+            se.trait.stand = sd(tl.diff)/sqrt(n())) %>% 
   left_join(temp) %>% 
-  mutate(se.tl.diff = ifelse(se.tl.diff == 0, NA, se.tl.diff),
-         percent.loss = 100-mean.tl.diff,
-         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+  mutate(se.trait.stand = ifelse(se.trait.stand == 0, NA, se.trait.stand),
+         percent.diff = mean.trait.stand-100,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trait = "LAH")
 
 ## Yolk-sac Volume - Overall
 larval.yolk.summary <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0) %>% 
   group_by(population, temperature, group) %>% 
-  summarize(mean.yolk = mean(y_vol_mm3),
-            se.yolk = sd(y_vol_mm3)/sqrt(n())) %>% ungroup() %>% 
+  summarize(mean.trait = mean(y_vol_mm3),
+            se.trait = sd(y_vol_mm3)/sqrt(n())) %>% ungroup() %>% 
   group_by(temperature) %>% 
-  mutate(width = 0.15 * n())
+  mutate(width = 0.15 * n(),
+         trait = "YSV")
 
 ## Yolk-sac Volume - Standardized Within Family
 larval.yolk.summary.family <- larval %>% filter(!is.na(y_vol_mm3), y_vol_mm3 != 0) %>% 
@@ -210,12 +213,13 @@ larval.yolk.summary.stand <- larval.yolk.summary.family %>% left_join(larval.yol
   filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
   mutate(yolk.diff = 100*(1+(mean.yolk-local.yolk)/local.yolk)) %>%
   group_by(population, temperature, group) %>% 
-  summarize(mean.yolk.diff = mean(yolk.diff),
-            se.yolk.diff = sd(yolk.diff)/sqrt(n())) %>% 
+  summarize(mean.trait.stand = mean(yolk.diff),
+            se.trait.stand = sd(yolk.diff)/sqrt(n())) %>% 
   left_join(temp) %>% 
-  mutate(se.yolk.diff = ifelse(se.yolk.diff == 0, NA, se.yolk.diff),
-         percent.loss = 100-mean.yolk.diff,
-         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+  mutate(se.trait.stand = ifelse(se.trait.stand == 0, NA, se.trait.stand),
+         percent.diff = mean.trait.stand-100,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trait = "YSV")
 
 
 #### VISUALIZATIONS ----------------------------------------------------------
@@ -364,5 +368,5 @@ plot.all <- grid.arrange(
   heights = c(0.04, 1.1)
 )
 
-ggsave("figures/Fig5-scaled.tiff", plot = plot.all, width = 6.9, height = 5.3, dpi = 600)
+#ggsave("figures/Fig5-scaled.tiff", plot = plot.all, width = 6.9, height = 5.3, dpi = 600)
 

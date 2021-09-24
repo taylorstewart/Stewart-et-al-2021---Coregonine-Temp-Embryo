@@ -1,6 +1,6 @@
 #### CLEAR THE ENVIRONMENT FIRST ---------------------------------------------
 
-rm(list = ls(all.names = TRUE))
+#rm(list = ls(all.names = TRUE))
 
 
 #### LOAD PACKAGES -----------------------------------------------------------
@@ -71,18 +71,18 @@ hatch.survival.finland <- hatch %>% filter(eye != 0, group %in% c( "LK-Vendace",
 ## filter to only hatched embryos
 hatch.dpf.cisco <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
-  filter(include.incubation == "y")
+  filter(include_incubation == "y")
 hatch.dpf.finland <- hatch %>% filter(!is.na(dpf), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
-  filter(include.incubation == "y")
+  filter(include_incubation == "y")
 
 ## filter to only hatched embryos
 hatch.ADD.cisco <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c("LO-Cisco", "LS-Cisco"))%>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2, 4.4, 6.9, 8.9))) %>% droplevels() %>% 
-  filter(include.incubation == "y")
+  filter(include_incubation == "y")
 hatch.ADD.finland <- hatch %>% filter(!is.na(ADD), hatch == 1, group %in% c( "LK-Vendace", "LK-Whitefish")) %>% 
   mutate(temperature = factor(temperature, ordered = TRUE, levels = c(2.2, 4.0, 6.9, 8))) %>% droplevels() %>% 
-  filter(include.incubation == "y")
+  filter(include_incubation == "y")
 
 
 #### STATISTICAL ANALYSIS - SURVIVAL - CISCO -----------------------------------------------------
@@ -260,10 +260,11 @@ temp <- data.frame(group = c("LK-Whitefish", "LK-Whitefish", "LK-Whitefish", "LK
 ## Embryo Survival Overall
 hatch.survival.summary <- hatch %>% filter(eye != 0) %>% 
   group_by(population, temperature, group) %>% 
-  summarize(mean.hatch = mean(hatch),
-            se.hatch = sd(hatch)/sqrt(n())) %>% 
+  summarize(mean.trait = mean(hatch),
+            se.trait = sd(hatch)/sqrt(n())) %>% 
   group_by(temperature) %>% 
-  mutate(width = 0.15 * n())
+  mutate(width = 0.15 * n(),
+         trait = "survival")
 
 ## Embryo Survival - Standardized Within Family
 hatch.survival.summary.family <- hatch %>% filter(eye != 0) %>% 
@@ -277,21 +278,23 @@ hatch.survival.summary.stand <- hatch.survival.summary.family %>% left_join(hatc
   filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
   mutate(survival.diff = 100*(1+(mean.hatch-local.survival)/local.survival)) %>%
   group_by(population, temperature, group) %>% 
-  summarize(mean.survival.diff = mean(survival.diff),
-            se.survival.diff = sd(survival.diff)/sqrt(n())) %>% 
+  summarize(mean.trait.stand = mean(survival.diff),
+            se.trait.stand = sd(survival.diff)/sqrt(n())) %>% 
   left_join(temp) %>% 
-  mutate(se.survival.diff = ifelse(se.survival.diff == 0, NA, se.survival.diff),
-         percent.loss = 100-mean.survival.diff,
-         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+  mutate(se.trait.stand = ifelse(se.trait.stand == 0, NA, se.trait.stand),
+         percent.diff = mean.trait.stand-100,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trait = "survival")
 
 
 ## Days Post Fertilization
 hatch.dpf.summary <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
-  summarize(mean.dpf = mean(dpf),
-            se.dpf = sd(dpf)/sqrt(n())) %>% ungroup() %>% 
+  summarize(mean.trait = mean(dpf),
+            se.trait = sd(dpf)/sqrt(n())) %>% ungroup() %>% 
   group_by(temperature) %>% 
-  mutate(width = 0.15 * n())
+  mutate(width = 0.15 * n(),
+         trait = "dpf")
 
 ## Days Post Fertilization - Standardized Within Family
 hatch.dpf.summary.family <- hatch %>% filter(!is.na(dpf), hatch == 1) %>% 
@@ -305,20 +308,22 @@ hatch.dpf.summary.stand <- hatch.dpf.summary.family %>% left_join(hatch.dpf.stan
   filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
   mutate(dpf.diff = 100*(1+(mean.dpf-local.dpf)/local.dpf)) %>%
   group_by(population, temperature, group) %>% 
-  summarize(mean.dpf.diff = mean(dpf.diff),
-            se.dpf.diff = sd(dpf.diff)/sqrt(n())) %>% 
+  summarize(mean.trait.stand = mean(dpf.diff),
+            se.trait.stand = sd(dpf.diff)/sqrt(n())) %>% 
   left_join(temp) %>% 
-  mutate(se.dpf.diff = ifelse(se.dpf.diff == 0, NA, se.dpf.diff),
-         percent.loss = 100-mean.dpf.diff,
-         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+  mutate(se.trait.stand = ifelse(se.trait.stand == 0, NA, se.trait.stand),
+         percent.diff = mean.trait.stand-100,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trait = "dpf")
 
 ## Accumulated Degree-Days
 hatch.ADD.summary <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
   group_by(population, temperature, group) %>% 
-  summarize(mean.ADD = mean(ADD),
-            se.ADD = sd(ADD)/sqrt(n())) %>% ungroup() %>% 
+  summarize(mean.trait = mean(ADD),
+            se.trait = sd(ADD)/sqrt(n())) %>% ungroup() %>% 
   group_by(temperature) %>% 
-  mutate(width = 0.15 * n())
+  mutate(width = 0.15 * n(),
+         trait = "ADD")
 
 ## Accumulated Degree-Days - Standardized Within Family
 hatch.ADD.summary.family <- hatch %>% filter(!is.na(ADD), hatch == 1) %>% 
@@ -332,23 +337,24 @@ hatch.ADD.summary.stand <- hatch.ADD.summary.family %>% left_join(hatch.ADD.stan
   filter(group != "LK-Whitefish" | family != "F8M11") %>%  ## No data at 2C
   mutate(ADD.diff = 100*(1+(mean.ADD-local.ADD)/local.ADD)) %>%
   group_by(population, temperature, group) %>% 
-  summarize(mean.ADD.diff = mean(ADD.diff),
-            se.ADD.diff = sd(ADD.diff)/sqrt(n())) %>% 
+  summarize(mean.trait.stand = mean(ADD.diff),
+            se.trait.stand = sd(ADD.diff)/sqrt(n())) %>% 
   left_join(temp) %>% 
-  mutate(se.ADD.diff = ifelse(se.ADD.diff == 0, NA, se.ADD.diff),
-         percent.loss = 100-mean.ADD.diff,
-         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")))
+  mutate(se.trait.stand = ifelse(se.trait.stand == 0, NA, se.trait.stand),
+         percent.diff = mean.trait.stand-100,
+         group = factor(group, ordered = TRUE, levels = c("LK-Vendace", "LK-Whitefish", "LS-Cisco", "LO-Cisco")),
+         trait = "ADD")
 
 
 #### VISUALIZATIONS - MEANS ----------------------------------------------------------------------
 
 ## Embryo Survival
-plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.hatch * 100), 
+plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.trait * 100), 
                                                     group = group, color = group, shape = group, 
                                                     linetype = group, width = width)) + 
   geom_line(size = 0.4, position = position_dodge(0.13)) +
   geom_point(size = 1.9, position = position_dodge(0.13), stroke = 0.6) +
-  geom_errorbar(aes(ymin = (mean.hatch - se.hatch) * 100, ymax = (mean.hatch + se.hatch) * 100), 
+  geom_errorbar(aes(ymin = (mean.trait - se.trait) * 100, ymax = (mean.trait + se.trait) * 100), 
                 position = position_dodge(0.13),
                 size = 0.4, linetype = "solid", show.legend = FALSE) +
   scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
@@ -377,9 +383,9 @@ plot.survival <- ggplot(hatch.survival.summary, aes(x = temperature, y = (mean.h
         plot.margin = unit(c(1.9, 1.9, 1.9, 1.9), 'mm'))
 
 ## Plot Standardized Survival
-plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = mean.survival.diff, group = temp.treatment, fill = temp.treatment)) + 
+plot.survival.stand <- ggplot(hatch.survival.summary.stand, aes(x = group, y = mean.trait.stand, group = temp.treatment, fill = temp.treatment)) + 
   geom_bar(stat = "identity", size = 0.2, position = position_dodge(0.9), color = "black") +
-  geom_errorbar(aes(ymin = (mean.survival.diff - se.survival.diff), ymax = (mean.survival.diff + se.survival.diff)), 
+  geom_errorbar(aes(ymin = (mean.trait.stand - se.trait.stand), ymax = (mean.trait.stand + se.trait.stand)), 
                 position = position_dodge(0.9), size = 0.3, width = 0.4, show.legend = FALSE) +
   #scale_x_continuous(limits = c(1.75, 9.15), breaks = c(2, 4, 4.4, 6.9, 8, 8.9), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0.0, 105), breaks = seq(0.0, 100, 20), expand = c(0, 0)) +
@@ -553,5 +559,5 @@ plot.all <- grid.arrange(
   heights = c(0.035, 1.1)
 )
 
-ggsave("figures/Fig3.tiff", plot = plot.all, width = 6.9, height = 6.9, dpi = 600)
+#ggsave("figures/Fig3.tiff", plot = plot.all, width = 6.9, height = 6.9, dpi = 600)
 
